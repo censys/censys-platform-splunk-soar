@@ -1,6 +1,6 @@
 # File: censysplatform_consts.py
 #
-# Copyright (c) 2025 Splunk Inc.
+# Copyright (c) 2025-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,14 @@
 # and limitations under the License.
 
 # API endpoints
-CENSYSPLATFORM_CONNECTIVITY_ENDPOINT = "/endpoint/to/test/connectivity"
+CENSYSPLATFORM_DEFAULT_BASE_URL = "https://api.platform.censys.io"
+
+# Action identifiers
+ACTION_ID_TEST_CONNECTIVITY = "test_connectivity"
+ACTION_ID_LOOKUP_HOST = "lookup_host"
+ACTION_ID_LOOKUP_CERT = "lookup_cert"
+ACTION_ID_LOOKUP_WEB_PROPERTY = "lookup_web_property"
+ACTION_ID_SEARCH = "search"
 
 # Error messages
 CENSYSPLATFORM_ERR_CONNECTIVITY_TEST = "Test Connectivity Failed"
