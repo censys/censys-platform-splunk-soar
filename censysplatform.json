@@ -1,6 +1,6 @@
 {
     "appid": "15d8b3a4-9910-4ac8-bd64-933168fc03ca",
-    "name": "Censys for Splunk SOAR",
+    "name": "Censys Platform for Splunk SOAR",
     "description": "This app implements investigative actions to get IP, domain and certificate data from the Censys Platform.",
     "type": "information",
     "product_vendor": "Censys",
