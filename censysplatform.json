@@ -4,8 +4,8 @@
     "description": "This app implements investigative actions to get IP, domain and certificate data from the Censys Platform.",
     "type": "information",
     "product_vendor": "Censys",
-    "logo": "logo.svg",
-    "logo_dark": "logo_dark.svg",
+    "logo": "censysplatform_logo.png",
+    "logo_dark": "censysplatform_logo_dark.png",
     "product_name": "Censys Platform",
     "product_version_regex": ".*",
     "publisher": "Censys",
@@ -169,6 +169,10 @@
                     "description": "Certificate SHA256 fingerprint",
                     "required": true,
                     "primary": true,
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ],
                     "order": 0
                 }
             },
@@ -179,11 +183,19 @@
                 },
                 {
                     "data_path": "action_result.parameter.fingerprint_sha256",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.fingerprint_sha256",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ]
                 },
                 {
                     "data_path": "action_result.summary.display_name",
@@ -191,7 +203,11 @@
                 },
                 {
                     "data_path": "action_result.summary.fingerprint_sha256",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ]
                 },
                 {
                     "data_path": "action_result.message",
