@@ -155,6 +155,11 @@
                     "data_type": "numeric"
                 }
             ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_host",
+                "title": "Host Lookup Results"
+            },
             "versions": "EQ(*)"
         },
         {
@@ -222,6 +227,11 @@
                     "data_type": "numeric"
                 }
             ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_cert",
+                "title": "Certificate Lookup Results"
+            },
             "versions": "EQ(*)"
         },
         {
@@ -315,6 +325,11 @@
                     "data_type": "numeric"
                 }
             ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_web_property",
+                "title": "Web Property Lookup Results"
+            },
             "versions": "EQ(*)"
         },
         {

@@ -1,0 +1,47 @@
+<table class="result-table"
+       {% if standalone %}style="border: none; width: 100%;"{% endif %}>
+  <tbody>
+    {% if cert.fingerprint_sha256 %}
+      <tr class="field-row">
+        <td>Fingerprint (SHA256)</td>
+        <td>{{ cert.fingerprint_sha256 }}</td>
+      </tr>
+    {% endif %}
+    {% if cert.subject_dn %}
+      <tr class="field-row">
+        <td>Subject DN</td>
+        <td>{{ cert.subject_dn }}</td>
+      </tr>
+    {% endif %}
+    {% if cert.issuer_dn %}
+      <tr class="field-row">
+        <td>Issuer DN</td>
+        <td>{{ cert.issuer_dn }}</td>
+      </tr>
+    {% endif %}
+    {% if cert.common_names %}
+      <tr class="field-row">
+        <td>Common Names</td>
+        <td>{{ cert.common_names|join(", ") }}</td>
+      </tr>
+    {% endif %}
+    {% if cert.valid_from %}
+      <tr class="field-row">
+        <td>Valid From</td>
+        <td>{{ cert.valid_from }}</td>
+      </tr>
+    {% endif %}
+    {% if cert.valid_to %}
+      <tr class="field-row">
+        <td>Valid To</td>
+        <td>{{ cert.valid_to }}</td>
+      </tr>
+    {% endif %}
+    {% if cert.self_signed is not none %}
+      <tr class="field-row">
+        <td>Self-Signed</td>
+        <td>{{ cert.self_signed }}</td>
+      </tr>
+    {% endif %}
+  </tbody>
+</table>

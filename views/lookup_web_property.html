@@ -1,0 +1,87 @@
+{% extends 'base/logo_header.html' %}
+{% block title %}Web Property Lookup Results{% endblock %}
+{% block widget_content %}
+  {% include 'views/partials/common_styles.html' %}
+  <div class="result-wrapper">
+    {% for result in results %}
+      <div class="result-section">
+        <table class="result-table">
+          <tbody>
+            <tr class="field-row">
+              <td>Hostname</td>
+              <td>{{ result.hostname }}</td>
+            </tr>
+            <tr class="field-row">
+              <td>Port</td>
+              <td>{{ result.port }}</td>
+            </tr>
+            {% if result.scan_time and result.scan_time != "N/A" %}
+              <tr class="field-row">
+                <td>Scan Time</td>
+                <td>{{ result.scan_time }}</td>
+              </tr>
+            {% endif %}
+            {% if result.software %}
+              <tr class="field-row">
+                <td>
+                  <strong>Software</strong>
+                </td>
+                <td>
+                  <ul class="result-list">
+                    {% for sw in result.software %}
+                      <li>
+                        vendor={{ sw.vendor }}, product={{ sw.product }}, version={{ sw.version }}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </td>
+              </tr>
+            {% endif %}
+            {% if result.endpoints %}
+              <tr class="field-row">
+                <td>
+                  <strong>Endpoints</strong>
+                </td>
+                <td>
+                  <ul class="result-list">
+                    {% for endpoint in result.endpoints %}<li>{{ endpoint.endpoint_type }} - {{ endpoint.path }}</li>{% endfor %}
+                  </ul>
+                </td>
+              </tr>
+            {% endif %}
+            {% if result.labels %}
+              <tr class="field-row">
+                <td>Labels</td>
+                <td>{{ result.labels|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.threats %}
+              <tr class="field-row">
+                <td>Threats</td>
+                <td>{{ result.threats|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.vulns %}
+              <tr class="field-row">
+                <td>Vulnerabilities</td>
+                <td>{{ result.vulns|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.cert.fingerprint_sha256 %}
+              <tr class="field-row">
+                <td>
+                  <strong>Cert</strong>
+                </td>
+                <td>
+                  {% with cert=result.cert, standalone=False %}
+                    {% include 'views/partials/cert_table.html' %}
+                  {% endwith %}
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

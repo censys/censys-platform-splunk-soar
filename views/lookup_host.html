@@ -1,0 +1,160 @@
+{% extends 'base/logo_header.html' %}
+{% block title %}Host Lookup Results{% endblock %}
+{% block widget_content %}
+  {% include 'views/partials/common_styles.html' %}
+  <div class="result-wrapper">
+    {% for result in results %}
+      <div class="result-section">
+        <table class="result-table">
+          <tbody>
+            <tr class="field-row">
+              <td>IP</td>
+              <td>{{ result.ip }}</td>
+            </tr>
+            {% if result.service_count is not none %}
+              <tr class="field-row">
+                <td>Service Count</td>
+                <td>{{ result.service_count }}</td>
+              </tr>
+            {% endif %}
+            {% if result.dns_names %}
+              <tr class="field-row">
+                <td>DNS Names</td>
+                <td>{{ result.dns_names|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.forward_dns_names %}
+              <tr class="field-row">
+                <td>Forward DNS Names</td>
+                <td>{{ result.forward_dns_names|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.reverse_dns_names %}
+              <tr class="field-row">
+                <td>Reverse DNS Names</td>
+                <td>{{ result.reverse_dns_names|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.whois_network_name %}
+              <tr class="field-row">
+                <td>WHOIS Network Name</td>
+                <td>{{ result.whois_network_name }}</td>
+              </tr>
+            {% endif %}
+            {% if result.whois_network_cidrs %}
+              <tr class="field-row">
+                <td>WHOIS Network CIDRs</td>
+                <td>{{ result.whois_network_cidrs|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.autonomous_system_name %}
+              <tr class="field-row">
+                <td>Autonomous System Name</td>
+                <td>{{ result.autonomous_system_name }}</td>
+              </tr>
+            {% endif %}
+            {% if result.autonomous_system_asn %}
+              <tr class="field-row">
+                <td>Autonomous System ASN</td>
+                <td>{{ result.autonomous_system_asn }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.city %}
+              <tr class="field-row">
+                <td>City</td>
+                <td>{{ result.location.city }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.province %}
+              <tr class="field-row">
+                <td>Province</td>
+                <td>{{ result.location.province }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.postal_code %}
+              <tr class="field-row">
+                <td>Postal Code</td>
+                <td>{{ result.location.postal_code }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.country %}
+              <tr class="field-row">
+                <td>Country</td>
+                <td>{{ result.location.country }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.country_code %}
+              <tr class="field-row">
+                <td>Country Code</td>
+                <td>{{ result.location.country_code }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.continent %}
+              <tr class="field-row">
+                <td>Continent</td>
+                <td>{{ result.location.continent }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.latitude is not none %}
+              <tr class="field-row">
+                <td>Latitude</td>
+                <td>{{ result.location.latitude }}</td>
+              </tr>
+            {% endif %}
+            {% if result.location.longitude is not none %}
+              <tr class="field-row">
+                <td>Longitude</td>
+                <td>{{ result.location.longitude }}</td>
+              </tr>
+            {% endif %}
+            {% if result.services %}
+              <tr class="field-row">
+                <td>Services</td>
+                <td>
+                  <ul class="result-list">
+                    {% for service in result.services %}
+                      <li>
+                        {{ service.port }}/{{ service.protocol }} ({{ service.transport_protocol }})
+                        {% if service.scan_time %}- scan_time={{ service.scan_time }}{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </td>
+              </tr>
+            {% endif %}
+            {% if result.service_scan_times %}
+              <tr class="field-row">
+                <td>Service Scan Times</td>
+                <td>{{ result.service_scan_times|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.host_labels %}
+              <tr class="field-row">
+                <td>Host Labels</td>
+                <td>{{ result.host_labels|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.service_labels %}
+              <tr class="field-row">
+                <td>Service Labels</td>
+                <td>{{ result.service_labels|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.service_threat_names %}
+              <tr class="field-row">
+                <td>Service Threat Names</td>
+                <td>{{ result.service_threat_names|join(", ") }}</td>
+              </tr>
+            {% endif %}
+            {% if result.service_vulns %}
+              <tr class="field-row">
+                <td>Service Vulnerabilities</td>
+                <td>{{ result.service_vulns|join(", ") }}</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

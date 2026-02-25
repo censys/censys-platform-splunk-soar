@@ -1,0 +1,14 @@
+{% extends 'base/logo_header.html' %}
+{% block title %}Certificate Lookup Results{% endblock %}
+{% block widget_content %}
+  {% include 'views/partials/common_styles.html' %}
+  <div class="result-wrapper">
+    {% for result in results %}
+      <div class="result-section">
+        {% with cert=result, standalone=True %}
+          {% include 'views/partials/cert_table.html' %}
+        {% endwith %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}
