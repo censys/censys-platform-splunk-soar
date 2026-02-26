@@ -21,6 +21,52 @@ def _ensure_list(value: Any) -> list[Any]:
     return []
 
 
+def _iter_action_results(all_app_runs: Any):
+    """Yield action result objects from SOAR all_app_runs safely."""
+    if all_app_runs is None:
+        return
+
+    try:
+        iterator = iter(all_app_runs)
+    except TypeError:
+        return
+
+    for app_run in iterator:
+        action_results = None
+
+        if isinstance(app_run, dict):
+            action_results = app_run.get("action_results")
+            if action_results is None:
+                action_results = app_run.get("results")
+        else:
+            try:
+                _summary, action_results = app_run
+            except Exception:
+                continue
+
+        if action_results is None:
+            continue
+
+        if isinstance(action_results, (list, tuple)):
+            for result in action_results:
+                yield result
+        else:
+            yield action_results
+
+
+def _first_data_dict(result: Any) -> dict[str, Any] | None:
+    """Return first action_result.data object if it is a dict."""
+    if result is None or not hasattr(result, "get_data"):
+        return None
+    try:
+        data = result.get_data()
+    except Exception:
+        return None
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        return data[0]
+    return None
+
+
 def _extract_cert_fields(cert: dict[str, Any]) -> dict[str, Any]:
     """Extract cert fields from canonical Censys cert schema."""
     parsed = cert.get("parsed", {})
@@ -42,13 +88,12 @@ def display_host(provides, all_app_runs, context):
     _ = provides
     context["results"] = results = []
 
-    for _summary, action_results in all_app_runs:
-        for result in action_results:
-            data = result.get_data()
-            if not data or not isinstance(data[0], dict):
-                continue
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
 
-            d = data[0]
+        try:
             services = _ensure_list(d.get("services"))
 
             service_rows = []
@@ -145,6 +190,8 @@ def display_host(provides, all_app_runs, context):
                     },
                 }
             )
+        except Exception:
+            continue
 
     return "views/lookup_host.html"
 
@@ -153,12 +200,14 @@ def display_cert(provides, all_app_runs, context):
     _ = provides
     context["results"] = results = []
 
-    for _summary, action_results in all_app_runs:
-        for result in action_results:
-            data = result.get_data()
-            if not data or not isinstance(data[0], dict):
-                continue
-            results.append(_extract_cert_fields(data[0]))
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
+        try:
+            results.append(_extract_cert_fields(d))
+        except Exception:
+            continue
 
     return "views/lookup_cert.html"
 
@@ -167,14 +216,12 @@ def display_web_property(provides, all_app_runs, context):
     _ = provides
     context["results"] = results = []
 
-    for _summary, action_results in all_app_runs:
-        for result in action_results:
-            data = result.get_data()
-            if not data or not isinstance(data[0], dict):
-                continue
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
 
-            d = data[0]
-
+        try:
             endpoints = []
             for endpoint in _ensure_list(d.get("endpoints")):
                 if isinstance(endpoint, dict):
@@ -215,5 +262,7 @@ def display_web_property(provides, all_app_runs, context):
                     "cert": _extract_cert_fields(cert) if cert else {},
                 }
             )
+        except Exception:
+            continue
 
     return "views/lookup_web_property.html"
