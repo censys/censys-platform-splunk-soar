@@ -1,3 +1,16 @@
+# Copyright (c) 2026 Splunk Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Custom render views for Censys SOAR action widgets."""
 
 from __future__ import annotations
@@ -48,8 +61,7 @@ def _iter_action_results(all_app_runs: Any):
             continue
 
         if isinstance(action_results, (list, tuple)):
-            for result in action_results:
-                yield result
+            yield from action_results
         else:
             yield action_results
 
@@ -152,11 +164,7 @@ def display_host(provides, all_app_runs, context):
                         if name is not None:
                             forward_dns_names.append(str(name))
 
-            reverse_dns_names = [
-                str(name)
-                for name in _ensure_list(_safe_get(d, "dns.reverse_dns.names", []))
-                if name is not None
-            ]
+            reverse_dns_names = [str(name) for name in _ensure_list(_safe_get(d, "dns.reverse_dns.names", [])) if name is not None]
 
             location = d.get("location") if isinstance(d.get("location"), dict) else {}
             coordinates = location.get("coordinates") if isinstance(location.get("coordinates"), dict) else {}
@@ -244,7 +252,19 @@ def display_web_property(provides, all_app_runs, context):
                     )
 
             labels = [str(v) for v in _ensure_list(d.get("labels")) if v is not None]
-            threats = [str(v) for v in _ensure_list(d.get("threats")) if v is not None]
+            threats = []
+            for threat in _ensure_list(d.get("threats")):
+                if isinstance(threat, dict):
+                    threat_name = threat.get("name")
+                    if threat_name is None:
+                        continue
+                    threat_value = str(threat_name)
+                elif threat is not None:
+                    threat_value = str(threat)
+                else:
+                    continue
+                if threat_value not in threats:
+                    threats.append(threat_value)
             vulns = [str(v) for v in _ensure_list(d.get("vulns")) if v is not None]
 
             cert = d.get("cert") if isinstance(d.get("cert"), dict) else {}

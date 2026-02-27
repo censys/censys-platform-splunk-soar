@@ -1,15 +1,30 @@
+<!--
+ Copyright (c) 2026 Splunk Inc.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
 {% extends 'widgets/widget_template.html' %}
 {% load custom_template %}
 {% block custom_title_prop %}
-{% if title_logo %}
-style="background-size: auto 60%; background-position: 50%; background-repeat: no-repeat; background-image: url('/app_resource/{{ title_logo }}');"
-{% endif %}
+  {% if title_logo %}
+    style="background-size: auto 60%; background-position: 50%; background-repeat: no-repeat; background-image: url('/app_resource/{{ title_logo }}');"
+  {% endif %}
 {% endblock %}
 {% block title1 %}{{ title1 }}{% endblock %}
 {% block title2 %}{{ title2 }}{% endblock %}
 {% block custom_tools %}{% endblock %}
 {% block widget_content %}
-<style>
+  <style>
   .censys-kv td:first-child {
     min-width: 190px;
     padding-right: 16px !important;
@@ -18,52 +33,167 @@ style="background-size: auto 60%; background-position: 50%; background-repeat: n
   .censys-kv td:last-child {
     padding-left: 16px !important;
   }
-</style>
-{% for result in results %}
-<h4>Host Lookup</h4>
-<table class="wf-table-vertical datatable censys-kv">
-  <tr><td><b>IP</b></td><td>{{ result.ip }}</td></tr>
-  <tr><td><b>Service Count</b></td><td>{{ result.service_count }}</td></tr>
-  <tr><td><b>DNS Names</b></td><td>{{ result.dns_names|join:", " }}</td></tr>
-  <tr><td><b>Forward DNS Names</b></td><td>{{ result.forward_dns_names|join:", " }}</td></tr>
-  <tr><td><b>Reverse DNS Names</b></td><td>{{ result.reverse_dns_names|join:", " }}</td></tr>
-  <tr><td><b>WHOIS Network Name</b></td><td>{{ result.whois_network_name }}</td></tr>
-  <tr><td><b>WHOIS Network CIDRs</b></td><td>{{ result.whois_network_cidrs|join:", " }}</td></tr>
-  <tr><td><b>AS Name</b></td><td>{{ result.autonomous_system_name }}</td></tr>
-  <tr><td><b>AS ASN</b></td><td>{{ result.autonomous_system_asn }}</td></tr>
-  <tr><td><b>City</b></td><td>{{ result.location.city }}</td></tr>
-  <tr><td><b>Province</b></td><td>{{ result.location.province }}</td></tr>
-  <tr><td><b>Postal Code</b></td><td>{{ result.location.postal_code }}</td></tr>
-  <tr><td><b>Country</b></td><td>{{ result.location.country }}</td></tr>
-  <tr><td><b>Country Code</b></td><td>{{ result.location.country_code }}</td></tr>
-  <tr><td><b>Continent</b></td><td>{{ result.location.continent }}</td></tr>
-  <tr><td><b>Latitude</b></td><td>{{ result.location.latitude }}</td></tr>
-  <tr><td><b>Longitude</b></td><td>{{ result.location.longitude }}</td></tr>
-  <tr><td><b>Host Labels</b></td><td>{{ result.host_labels|join:", " }}</td></tr>
-  <tr><td><b>Service Labels</b></td><td>{{ result.service_labels|join:", " }}</td></tr>
-  <tr><td><b>Service Threat Names</b></td><td>{{ result.service_threat_names|join:", " }}</td></tr>
-  <tr><td><b>Service Vulnerabilities</b></td><td>{{ result.service_vulns|join:", " }}</td></tr>
-  <tr><td><b>Service Scan Times</b></td><td>{{ result.service_scan_times|join:", " }}</td></tr>
-</table>
-{% if result.services %}
-<h4>Services</h4>
-<table class="wf-table-horizontal datatable">
-  <thead>
-    <tr><th>Port</th><th>Protocol</th><th>Transport</th><th>Scan Time</th></tr>
-  </thead>
-  <tbody>
-    {% for service in result.services %}
-    <tr>
-      <td>{{ service.port }}</td>
-      <td>{{ service.protocol }}</td>
-      <td>{{ service.transport_protocol }}</td>
-      <td>{{ service.scan_time }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endif %}
-{% empty %}
-No host results parsed for this action run.
-{% endfor %}
+  </style>
+  {% for result in results %}
+    <h4>Host Lookup</h4>
+    <table class="wf-table-vertical datatable censys-kv">
+      <tr>
+        <td>
+          <b>IP</b>
+        </td>
+        <td>{{ result.ip }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Service Count</b>
+        </td>
+        <td>{{ result.service_count }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>DNS Names</b>
+        </td>
+        <td>{{ result.dns_names|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Forward DNS Names</b>
+        </td>
+        <td>{{ result.forward_dns_names|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Reverse DNS Names</b>
+        </td>
+        <td>{{ result.reverse_dns_names|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>WHOIS Network Name</b>
+        </td>
+        <td>{{ result.whois_network_name }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>WHOIS Network CIDRs</b>
+        </td>
+        <td>{{ result.whois_network_cidrs|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>AS Name</b>
+        </td>
+        <td>{{ result.autonomous_system_name }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>AS ASN</b>
+        </td>
+        <td>{{ result.autonomous_system_asn }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>City</b>
+        </td>
+        <td>{{ result.location.city }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Province</b>
+        </td>
+        <td>{{ result.location.province }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Postal Code</b>
+        </td>
+        <td>{{ result.location.postal_code }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Country</b>
+        </td>
+        <td>{{ result.location.country }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Country Code</b>
+        </td>
+        <td>{{ result.location.country_code }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Continent</b>
+        </td>
+        <td>{{ result.location.continent }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Latitude</b>
+        </td>
+        <td>{{ result.location.latitude }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Longitude</b>
+        </td>
+        <td>{{ result.location.longitude }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Host Labels</b>
+        </td>
+        <td>{{ result.host_labels|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Service Labels</b>
+        </td>
+        <td>{{ result.service_labels|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Service Threat Names</b>
+        </td>
+        <td>{{ result.service_threat_names|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Service Vulnerabilities</b>
+        </td>
+        <td>{{ result.service_vulns|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Service Scan Times</b>
+        </td>
+        <td>{{ result.service_scan_times|join:", " }}</td>
+      </tr>
+    </table>
+    {% if result.services %}
+      <h4>Services</h4>
+      <table class="wf-table-horizontal datatable">
+        <thead>
+          <tr>
+            <th>Port</th>
+            <th>Protocol</th>
+            <th>Transport</th>
+            <th>Scan Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for service in result.services %}
+            <tr>
+              <td>{{ service.port }}</td>
+              <td>{{ service.protocol }}</td>
+              <td>{{ service.transport_protocol }}</td>
+              <td>{{ service.scan_time }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  {% empty %}
+    No host results parsed for this action run.
+  {% endfor %}
 {% endblock %}
