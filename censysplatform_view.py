@@ -34,6 +34,45 @@ def _ensure_list(value: Any) -> list[Any]:
     return []
 
 
+def _to_display_string(value: Any, preferred_keys: tuple[str, ...] = ()) -> str | None:
+    """Normalize mixed scalar/dict values into widget-friendly strings."""
+    if value is None:
+        return None
+
+    if isinstance(value, dict):
+        for key in preferred_keys:
+            candidate = value.get(key)
+            if candidate is None or isinstance(candidate, (dict, list)):
+                continue
+            return str(candidate)
+
+        for key in ("value", "name", "id", "cve_id", "cidr"):
+            if key in preferred_keys:
+                continue
+            candidate = value.get(key)
+            if candidate is None or isinstance(candidate, (dict, list)):
+                continue
+            return str(candidate)
+
+        return None
+
+    if isinstance(value, (list, tuple, set)):
+        return None
+
+    return str(value)
+
+
+def _normalize_display_list(values: Any, preferred_keys: tuple[str, ...] = ()) -> list[str]:
+    """Return displayable string values preserving input order."""
+    normalized: list[str] = []
+    for item in _ensure_list(values):
+        display_value = _to_display_string(item, preferred_keys)
+        if display_value is None:
+            continue
+        normalized.append(display_value)
+    return normalized
+
+
 def _iter_action_results(all_app_runs: Any):
     """Yield action result objects from SOAR all_app_runs safely."""
     if all_app_runs is None:
@@ -82,8 +121,7 @@ def _first_data_dict(result: Any) -> dict[str, Any] | None:
 def _extract_cert_fields(cert: dict[str, Any]) -> dict[str, Any]:
     """Extract cert fields from canonical Censys cert schema."""
     parsed = cert.get("parsed", {})
-    common_names = _ensure_list(_safe_get(parsed, "subject.common_name", []))
-    common_names = [str(name) for name in common_names if name is not None]
+    common_names = _normalize_display_list(_safe_get(parsed, "subject.common_name", []), ("name", "value"))
 
     return {
         "fingerprint_sha256": cert.get("fingerprint_sha256"),
@@ -130,41 +168,20 @@ def display_host(provides, all_app_runs, context):
                 if svc.get("scan_time") is not None:
                     service_scan_times.append(str(svc.get("scan_time")))
 
-                for label in _ensure_list(svc.get("labels")):
-                    if isinstance(label, dict) and label.get("value") is not None:
-                        value = str(label.get("value"))
-                        if value not in service_labels:
-                            service_labels.append(value)
+                service_labels.extend(_normalize_display_list(svc.get("labels"), ("value", "name", "label")))
+                service_threat_names.extend(_normalize_display_list(svc.get("threats"), ("name", "value", "id")))
+                service_vulns.extend(_normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")))
 
-                for threat in _ensure_list(svc.get("threats")):
-                    if isinstance(threat, dict) and threat.get("name") is not None:
-                        name = str(threat.get("name"))
-                        if name not in service_threat_names:
-                            service_threat_names.append(name)
+            host_labels = _normalize_display_list(d.get("labels"), ("value", "name", "label"))
 
-                for vuln in _ensure_list(svc.get("vulns")):
-                    if vuln is None:
-                        continue
-                    vuln_value = str(vuln)
-                    if vuln_value not in service_vulns:
-                        service_vulns.append(vuln_value)
-
-            host_labels = []
-            for label in _ensure_list(d.get("labels")):
-                if isinstance(label, dict) and label.get("value") is not None:
-                    host_labels.append(str(label.get("value")))
-
-            dns_names = [str(name) for name in _ensure_list(_safe_get(d, "dns.names", [])) if name is not None]
+            dns_names = _normalize_display_list(_safe_get(d, "dns.names", []), ("name", "value"))
 
             forward_dns_names = []
             for fdns in _ensure_list(_safe_get(d, "dns.forward_dns", [])):
                 if isinstance(fdns, dict):
-                    names = _ensure_list(fdns.get("names"))
-                    for name in names:
-                        if name is not None:
-                            forward_dns_names.append(str(name))
+                    forward_dns_names.extend(_normalize_display_list(fdns.get("names"), ("name", "value")))
 
-            reverse_dns_names = [str(name) for name in _ensure_list(_safe_get(d, "dns.reverse_dns.names", [])) if name is not None]
+            reverse_dns_names = _normalize_display_list(_safe_get(d, "dns.reverse_dns.names", []), ("name", "value"))
 
             location = d.get("location") if isinstance(d.get("location"), dict) else {}
             coordinates = location.get("coordinates") if isinstance(location.get("coordinates"), dict) else {}
@@ -183,7 +200,7 @@ def display_host(provides, all_app_runs, context):
                     "forward_dns_names": forward_dns_names,
                     "reverse_dns_names": reverse_dns_names,
                     "whois_network_name": _safe_get(d, "whois.network.name"),
-                    "whois_network_cidrs": _ensure_list(_safe_get(d, "whois.network.cidrs", [])),
+                    "whois_network_cidrs": _normalize_display_list(_safe_get(d, "whois.network.cidrs", []), ("cidr", "value", "name", "id")),
                     "autonomous_system_name": _safe_get(d, "autonomous_system.name"),
                     "autonomous_system_asn": _safe_get(d, "autonomous_system.asn"),
                     "location": {
@@ -251,21 +268,9 @@ def display_web_property(provides, all_app_runs, context):
                         }
                     )
 
-            labels = [str(v) for v in _ensure_list(d.get("labels")) if v is not None]
-            threats = []
-            for threat in _ensure_list(d.get("threats")):
-                if isinstance(threat, dict):
-                    threat_name = threat.get("name")
-                    if threat_name is None:
-                        continue
-                    threat_value = str(threat_name)
-                elif threat is not None:
-                    threat_value = str(threat)
-                else:
-                    continue
-                if threat_value not in threats:
-                    threats.append(threat_value)
-            vulns = [str(v) for v in _ensure_list(d.get("vulns")) if v is not None]
+            labels = _normalize_display_list(d.get("labels"), ("value", "name", "label"))
+            threats = _normalize_display_list(d.get("threats"), ("name", "value", "id"))
+            vulns = _normalize_display_list(d.get("vulns"), ("id", "name", "cve_id"))
 
             cert = d.get("cert") if isinstance(d.get("cert"), dict) else {}
 
