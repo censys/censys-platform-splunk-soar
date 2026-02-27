@@ -111,7 +111,7 @@ Read only: **True**
 
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
-**hostname** | required | Hostname or IP address for lookup | string | `domain` |
+**hostname** | required | Hostname or IP address for lookup | string | `domain` `ip` |
 **port** | required | TCP port value (1-65535) | numeric | |
 **at_time** | optional | Optional ISO 8601 timestamp for historical lookup | string | |
 
@@ -120,12 +120,12 @@ PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 --------- | ---- | -------- | --------------
 action_result.status | string | | |
-action_result.parameter.hostname | string | `domain` | |
+action_result.parameter.hostname | string | `domain` `ip` | |
 action_result.parameter.port | numeric | | |
-action_result.data.\*.hostname | string | | |
+action_result.data.\*.hostname | string | `domain` `ip` | |
 action_result.data.\*.port | numeric | | |
 action_result.summary.endpoint_count | numeric | | |
-action_result.summary.hostname | string | | |
+action_result.summary.hostname | string | `domain` `ip` | |
 action_result.summary.port | numeric | | |
 action_result.summary.endpoints | string | | |
 action_result.summary.scan_time | string | | |
