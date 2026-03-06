@@ -18,6 +18,7 @@ import ipaddress
 import re
 import uuid
 from typing import Any
+from urllib.parse import quote_plus
 
 import phantom.app as phantom
 from censys_platform import SDK, models
@@ -31,6 +32,7 @@ from censysplatform_consts import (
     ACTION_ID_SEARCH,
     ACTION_ID_TEST_CONNECTIVITY,
     CENSYSPLATFORM_DEFAULT_BASE_URL,
+    CENSYSPLATFORM_DEFAULT_UI_URL,
     CENSYSPLATFORM_ERR_CONNECTIVITY_TEST,
     CENSYSPLATFORM_SUCC_CONNECTIVITY_TEST,
 )
@@ -348,6 +350,10 @@ class CensysplatformConnector(BaseConnector):
 
         result_data = self._serialize(result)
         if isinstance(result_data, dict):
+            platform_search_url = f"{CENSYSPLATFORM_DEFAULT_UI_URL}/search?q={quote_plus(query)}"
+            if self._organization_id:
+                platform_search_url = f"{platform_search_url}&org={quote_plus(self._organization_id)}"
+            result_data["platform_search_url"] = platform_search_url
             action_result.add_data(result_data)
             query_duration_millis = result_data.get("query_duration_millis")
             total_hits = result_data.get("total_hits")

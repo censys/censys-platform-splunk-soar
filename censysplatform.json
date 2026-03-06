@@ -402,6 +402,11 @@
                     "data_type": "numeric"
                 }
             ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_search",
+                "title": "Search Results"
+            },
             "versions": "EQ(*)"
         }
     ],

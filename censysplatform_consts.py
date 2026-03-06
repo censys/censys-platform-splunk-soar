@@ -15,6 +15,7 @@
 
 # API endpoints
 CENSYSPLATFORM_DEFAULT_BASE_URL = "https://api.platform.censys.io"
+CENSYSPLATFORM_DEFAULT_UI_URL = "https://platform.censys.io"
 
 # Action identifiers
 ACTION_ID_TEST_CONNECTIVITY = "test_connectivity"

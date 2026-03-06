@@ -18,6 +18,9 @@ from __future__ import annotations
 from typing import Any
 
 
+SEARCH_WIDGET_MAX_HITS = 50
+
+
 def _safe_get(d: dict[str, Any], dotpath: str, default: Any = None) -> Any:
     """Nested dict access via dot-separated path."""
     current: Any = d
@@ -134,6 +137,231 @@ def _extract_cert_fields(cert: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _build_host_result(host: dict[str, Any], services: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    services = _ensure_list(services if services is not None else host.get("services"))
+
+    service_rows = []
+    service_labels = []
+    service_threat_names = []
+    service_vulns = []
+    service_scan_times = []
+
+    for svc in services:
+        if not isinstance(svc, dict):
+            continue
+
+        service_rows.append(
+            {
+                "port": svc.get("port"),
+                "protocol": svc.get("protocol"),
+                "transport_protocol": svc.get("transport_protocol"),
+                "scan_time": svc.get("scan_time"),
+                "labels": _normalize_display_list(svc.get("labels"), ("value", "name", "label")),
+                "threat_names": _normalize_display_list(svc.get("threats"), ("name", "value", "id")),
+                "vulns": _normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")),
+            }
+        )
+
+        if svc.get("scan_time") is not None:
+            service_scan_times.append(str(svc.get("scan_time")))
+
+        service_labels.extend(_normalize_display_list(svc.get("labels"), ("value", "name", "label")))
+        service_threat_names.extend(_normalize_display_list(svc.get("threats"), ("name", "value", "id")))
+        service_vulns.extend(_normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")))
+
+    host_labels = _normalize_display_list(host.get("labels"), ("value", "name", "label"))
+    dns_names = _normalize_display_list(_safe_get(host, "dns.names", []), ("name", "value"))
+
+    forward_dns_names = []
+    for fdns in _ensure_list(_safe_get(host, "dns.forward_dns", [])):
+        if isinstance(fdns, dict):
+            forward_dns_names.extend(_normalize_display_list(fdns.get("names"), ("name", "value")))
+
+    reverse_dns_names = _normalize_display_list(_safe_get(host, "dns.reverse_dns.names", []), ("name", "value"))
+
+    location = host.get("location") if isinstance(host.get("location"), dict) else {}
+    coordinates = location.get("coordinates") if isinstance(location.get("coordinates"), dict) else {}
+
+    return {
+        "ip": host.get("ip"),
+        "service_count": host.get("service_count"),
+        "services": service_rows,
+        "service_scan_times": service_scan_times,
+        "host_labels": host_labels,
+        "service_labels": service_labels,
+        "service_threat_names": service_threat_names,
+        "service_vulns": service_vulns,
+        "dns_names": dns_names,
+        "forward_dns_names": forward_dns_names,
+        "reverse_dns_names": reverse_dns_names,
+        "whois_network_name": _safe_get(host, "whois.network.name"),
+        "whois_network_cidrs": _normalize_display_list(
+            _safe_get(host, "whois.network.cidrs", []),
+            ("cidr", "value", "name", "id"),
+        ),
+        "autonomous_system_name": _safe_get(host, "autonomous_system.name"),
+        "autonomous_system_asn": _safe_get(host, "autonomous_system.asn"),
+        "location": {
+            "city": location.get("city"),
+            "province": location.get("province"),
+            "postal_code": location.get("postal_code"),
+            "country": location.get("country"),
+            "country_code": location.get("country_code"),
+            "continent": location.get("continent"),
+            "latitude": coordinates.get("latitude"),
+            "longitude": coordinates.get("longitude"),
+        },
+    }
+
+
+def _build_web_property_result(web_property: dict[str, Any]) -> dict[str, Any]:
+    endpoints = []
+    for endpoint in _ensure_list(web_property.get("endpoints")):
+        if isinstance(endpoint, dict):
+            endpoints.append(
+                {
+                    "endpoint_type": endpoint.get("endpoint_type"),
+                    "path": endpoint.get("path"),
+                }
+            )
+
+    software = []
+    for sw in _ensure_list(web_property.get("software")):
+        if isinstance(sw, dict):
+            software.append(
+                {
+                    "vendor": sw.get("vendor"),
+                    "product": sw.get("product"),
+                    "version": sw.get("version"),
+                }
+            )
+
+    labels = _normalize_display_list(web_property.get("labels"), ("value", "name", "label"))
+    threats = _normalize_display_list(web_property.get("threats"), ("name", "value", "id"))
+    vulns = _normalize_display_list(web_property.get("vulns"), ("id", "name", "cve_id"))
+    cert = web_property.get("cert") if isinstance(web_property.get("cert"), dict) else {}
+
+    return {
+        "hostname": web_property.get("hostname"),
+        "port": web_property.get("port"),
+        "scan_time": web_property.get("scan_time"),
+        "endpoints": endpoints,
+        "labels": labels,
+        "threats": threats,
+        "vulns": vulns,
+        "software": software,
+        "cert": _extract_cert_fields(cert) if cert else {},
+    }
+
+
+def _extract_search_hit_resource(hit: dict[str, Any], *dotpaths: str) -> dict[str, Any]:
+    for dotpath in dotpaths:
+        resource = _safe_get(hit, dotpath, {})
+        if isinstance(resource, dict) and resource:
+            return resource
+    return {}
+
+
+def _service_match_key(service: dict[str, Any]) -> tuple[Any, Any, Any] | None:
+    if not isinstance(service, dict):
+        return None
+
+    key = (service.get("port"), service.get("protocol"), service.get("transport_protocol"))
+    if key == (None, None, None):
+        return None
+    return key
+
+
+def _extract_search_host_services(hit: dict[str, Any], host: dict[str, Any]) -> list[dict[str, Any]]:
+    all_services = [svc for svc in _ensure_list(host.get("services")) if isinstance(svc, dict)]
+    matched_services = [svc for svc in _ensure_list(_safe_get(hit, "host_v1.matched_services", [])) if isinstance(svc, dict)]
+
+    if not matched_services:
+        return all_services
+
+    services_by_key = {}
+    for service in all_services:
+        key = _service_match_key(service)
+        if key is not None and key not in services_by_key:
+            services_by_key[key] = service
+
+    enriched_services = []
+    seen_keys = set()
+    for matched_service in matched_services:
+        key = _service_match_key(matched_service)
+        if key is not None and key in seen_keys:
+            continue
+
+        full_service = services_by_key.get(key, {})
+        enriched_service = dict(full_service) if isinstance(full_service, dict) else {}
+        enriched_service.update(matched_service)
+        enriched_services.append(enriched_service if enriched_service else dict(matched_service))
+
+        if key is not None:
+            seen_keys.add(key)
+
+    return enriched_services or all_services
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _build_search_summary_primary(
+    total_hits: Any,
+    returned_hits: int,
+    host_count: int,
+    cert_count: int,
+    web_property_count: int,
+) -> str:
+    total_hits_int = _safe_int(total_hits, returned_hits)
+    if total_hits_int < 1:
+        total_hits_int = returned_hits
+
+    non_zero_counts = []
+    if host_count:
+        non_zero_counts.append((host_count, "host", "hosts"))
+    if cert_count:
+        non_zero_counts.append((cert_count, "certificate", "certificates"))
+    if web_property_count:
+        non_zero_counts.append((web_property_count, "web property", "web properties"))
+
+    if returned_hits == total_hits_int and len(non_zero_counts) == 1:
+        count, singular, plural = non_zero_counts[0]
+        return f"{count:,} {singular if count == 1 else plural} matched"
+
+    return f"{total_hits_int:,} {'asset' if total_hits_int == 1 else 'assets'} matched"
+
+
+def _build_search_summary_secondary(total_hits: Any, processed_hits: int, returned_hits: int) -> str:
+    total_hits_int = _safe_int(total_hits, returned_hits)
+    if total_hits_int < processed_hits:
+        total_hits_int = processed_hits
+    return f"Showing {processed_hits:,} of {total_hits_int:,} hits."
+
+
+def _get_result_param(result: Any, key: str) -> Any:
+    if result is None or not hasattr(result, "get_param"):
+        return None
+
+    try:
+        params = result.get_param()
+    except TypeError:
+        try:
+            return result.get_param(key)
+        except Exception:
+            return None
+    except Exception:
+        return None
+
+    if isinstance(params, dict):
+        return params.get(key)
+    return None
+
+
 def display_host(provides, all_app_runs, context):
     _ = provides
     context["results"] = results = []
@@ -144,77 +372,7 @@ def display_host(provides, all_app_runs, context):
             continue
 
         try:
-            services = _ensure_list(d.get("services"))
-
-            service_rows = []
-            service_labels = []
-            service_threat_names = []
-            service_vulns = []
-            service_scan_times = []
-
-            for svc in services:
-                if not isinstance(svc, dict):
-                    continue
-
-                service_rows.append(
-                    {
-                        "port": svc.get("port"),
-                        "protocol": svc.get("protocol"),
-                        "transport_protocol": svc.get("transport_protocol"),
-                        "scan_time": svc.get("scan_time"),
-                    }
-                )
-
-                if svc.get("scan_time") is not None:
-                    service_scan_times.append(str(svc.get("scan_time")))
-
-                service_labels.extend(_normalize_display_list(svc.get("labels"), ("value", "name", "label")))
-                service_threat_names.extend(_normalize_display_list(svc.get("threats"), ("name", "value", "id")))
-                service_vulns.extend(_normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")))
-
-            host_labels = _normalize_display_list(d.get("labels"), ("value", "name", "label"))
-
-            dns_names = _normalize_display_list(_safe_get(d, "dns.names", []), ("name", "value"))
-
-            forward_dns_names = []
-            for fdns in _ensure_list(_safe_get(d, "dns.forward_dns", [])):
-                if isinstance(fdns, dict):
-                    forward_dns_names.extend(_normalize_display_list(fdns.get("names"), ("name", "value")))
-
-            reverse_dns_names = _normalize_display_list(_safe_get(d, "dns.reverse_dns.names", []), ("name", "value"))
-
-            location = d.get("location") if isinstance(d.get("location"), dict) else {}
-            coordinates = location.get("coordinates") if isinstance(location.get("coordinates"), dict) else {}
-
-            results.append(
-                {
-                    "ip": d.get("ip"),
-                    "service_count": d.get("service_count"),
-                    "services": service_rows,
-                    "service_scan_times": service_scan_times,
-                    "host_labels": host_labels,
-                    "service_labels": service_labels,
-                    "service_threat_names": service_threat_names,
-                    "service_vulns": service_vulns,
-                    "dns_names": dns_names,
-                    "forward_dns_names": forward_dns_names,
-                    "reverse_dns_names": reverse_dns_names,
-                    "whois_network_name": _safe_get(d, "whois.network.name"),
-                    "whois_network_cidrs": _normalize_display_list(_safe_get(d, "whois.network.cidrs", []), ("cidr", "value", "name", "id")),
-                    "autonomous_system_name": _safe_get(d, "autonomous_system.name"),
-                    "autonomous_system_asn": _safe_get(d, "autonomous_system.asn"),
-                    "location": {
-                        "city": location.get("city"),
-                        "province": location.get("province"),
-                        "postal_code": location.get("postal_code"),
-                        "country": location.get("country"),
-                        "country_code": location.get("country_code"),
-                        "continent": location.get("continent"),
-                        "latitude": coordinates.get("latitude"),
-                        "longitude": coordinates.get("longitude"),
-                    },
-                }
-            )
+            results.append(_build_host_result(d))
         except Exception:
             continue
 
@@ -247,47 +405,86 @@ def display_web_property(provides, all_app_runs, context):
             continue
 
         try:
-            endpoints = []
-            for endpoint in _ensure_list(d.get("endpoints")):
-                if isinstance(endpoint, dict):
-                    endpoints.append(
-                        {
-                            "endpoint_type": endpoint.get("endpoint_type"),
-                            "path": endpoint.get("path"),
-                        }
-                    )
+            results.append(_build_web_property_result(d))
+        except Exception:
+            continue
 
-            software = []
-            for sw in _ensure_list(d.get("software")):
-                if isinstance(sw, dict):
-                    software.append(
-                        {
-                            "vendor": sw.get("vendor"),
-                            "product": sw.get("product"),
-                            "version": sw.get("version"),
-                        }
-                    )
+    return "views/lookup_web_property.html"
 
-            labels = _normalize_display_list(d.get("labels"), ("value", "name", "label"))
-            threats = _normalize_display_list(d.get("threats"), ("name", "value", "id"))
-            vulns = _normalize_display_list(d.get("vulns"), ("id", "name", "cve_id"))
 
-            cert = d.get("cert") if isinstance(d.get("cert"), dict) else {}
+def display_search(provides, all_app_runs, context):
+    _ = provides
+    context["results"] = results = []
+
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
+
+        try:
+            raw_hits = _ensure_list(d.get("hits"))
+            host_results = []
+            cert_results = []
+            web_property_results = []
+            host_count = 0
+            cert_count = 0
+            web_property_count = 0
+
+            for index, hit in enumerate(raw_hits):
+                if not isinstance(hit, dict):
+                    continue
+
+                host_resource = _extract_search_hit_resource(hit, "host_v1.resource")
+                if host_resource:
+                    host_count += 1
+                    if index < SEARCH_WIDGET_MAX_HITS:
+                        host_results.append(_build_host_result(host_resource, _extract_search_host_services(hit, host_resource)))
+                    continue
+
+                cert_resource = _extract_search_hit_resource(hit, "certificate_v1.resource", "cert_v1.resource")
+                if cert_resource:
+                    cert_count += 1
+                    if index < SEARCH_WIDGET_MAX_HITS:
+                        cert_results.append(_extract_cert_fields(cert_resource))
+                    continue
+
+                web_property_resource = _extract_search_hit_resource(
+                    hit,
+                    "webproperty_v1.resource",
+                    "web_property_v1.resource",
+                )
+                if web_property_resource:
+                    web_property_count += 1
+                    if index < SEARCH_WIDGET_MAX_HITS:
+                        web_property_results.append(_build_web_property_result(web_property_resource))
 
             results.append(
                 {
-                    "hostname": d.get("hostname"),
-                    "port": d.get("port"),
-                    "scan_time": d.get("scan_time"),
-                    "endpoints": endpoints,
-                    "labels": labels,
-                    "threats": threats,
-                    "vulns": vulns,
-                    "software": software,
-                    "cert": _extract_cert_fields(cert) if cert else {},
+                    "query": d.get("query") or _get_result_param(result, "query"),
+                    "query_duration_millis": d.get("query_duration_millis"),
+                    "total_hits": d.get("total_hits"),
+                    "returned_hits": len(raw_hits),
+                    "processed_hits": min(len(raw_hits), SEARCH_WIDGET_MAX_HITS),
+                    "hits_truncated": len(raw_hits) > SEARCH_WIDGET_MAX_HITS,
+                    "summary_primary": _build_search_summary_primary(
+                        d.get("total_hits"),
+                        len(raw_hits),
+                        host_count,
+                        cert_count,
+                        web_property_count,
+                    ),
+                    "summary_secondary": _build_search_summary_secondary(
+                        d.get("total_hits"),
+                        min(len(raw_hits), SEARCH_WIDGET_MAX_HITS),
+                        len(raw_hits),
+                    ),
+                    "platform_search_url": d.get("platform_search_url"),
+                    "host_results": host_results,
+                    "cert_results": cert_results,
+                    "web_property_results": web_property_results,
                 }
             )
         except Exception:
             continue
 
-    return "views/lookup_web_property.html"
+    return "views/search_results.html"
