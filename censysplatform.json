@@ -343,6 +343,825 @@
             "versions": "EQ(*)"
         },
         {
+            "action": "get host event history",
+            "identifier": "get_host_event_history",
+            "description": "Retrieve host event history for an IP and time window",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "host_id": {
+                    "data_type": "string",
+                    "description": "Host IP address",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "ip"
+                    ],
+                    "order": 0
+                },
+                "start_time": {
+                    "data_type": "string",
+                    "description": "Upper RFC3339/ISO 8601 timestamp bound (newer time)",
+                    "required": true,
+                    "order": 1
+                },
+                "end_time": {
+                    "data_type": "string",
+                    "description": "Lower RFC3339/ISO 8601 timestamp bound (older time)",
+                    "required": true,
+                    "order": 2
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.host_id",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.start_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.end_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.request.host_id",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.events.*.resource.event_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.scanned_to",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.host_id",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.event_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.first_event_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.last_event_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.has_service_scanned",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.has_endpoint_scanned",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.has_dns_updates",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_host_event_history",
+                "title": "Host Event History Results"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "get host service history",
+            "identifier": "get_host_service_history",
+            "description": "Retrieve historical service observations for a host",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "host_id": {
+                    "data_type": "string",
+                    "description": "Host IP address",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "ip"
+                    ],
+                    "order": 0
+                },
+                "start_time": {
+                    "data_type": "string",
+                    "description": "Optional RFC3339/ISO 8601 start timestamp",
+                    "required": false,
+                    "order": 1
+                },
+                "end_time": {
+                    "data_type": "string",
+                    "description": "Optional RFC3339/ISO 8601 end timestamp",
+                    "required": false,
+                    "order": 2
+                },
+                "page_size": {
+                    "data_type": "numeric",
+                    "description": "Maximum rows to return (1-100)",
+                    "required": false,
+                    "default": 100,
+                    "order": 3
+                },
+                "page_token": {
+                    "data_type": "string",
+                    "description": "Pagination token from prior response",
+                    "required": false,
+                    "order": 4
+                },
+                "port": {
+                    "data_type": "numeric",
+                    "description": "Optional service port filter",
+                    "required": false,
+                    "order": 5
+                },
+                "protocol": {
+                    "data_type": "string",
+                    "description": "Optional application protocol filter",
+                    "required": false,
+                    "order": 6
+                },
+                "transport_protocol": {
+                    "data_type": "string",
+                    "description": "Optional transport protocol filter (tcp, udp, quic)",
+                    "required": false,
+                    "order": 7
+                },
+                "order_by": {
+                    "data_type": "string",
+                    "description": "Optional comma-separated order list (e.g. port ASC,protocol DESC)",
+                    "required": false,
+                    "order": 8
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.host_id",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.start_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.end_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.page_size",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.page_token",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.protocol",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.transport_protocol",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.order_by",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.host_id",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.ranges.*.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.ranges.*.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.ranges.*.protocol",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.ranges.*.transport_protocol",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.ranges.*.start_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.ranges.*.end_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.next_page_token",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.host_id",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.range_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.next_page_token_present",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.port_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.protocol_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.transport_protocol_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.min_start_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.max_end_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_host_service_history",
+                "title": "Host Service History Results"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "find related assets from host",
+            "identifier": "find_related_assets_from_host",
+            "description": "Generate and execute a related-assets search from a host seed",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "host_id": {
+                    "data_type": "string",
+                    "description": "Host IP address to use as the related-assets seed",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "ip"
+                    ],
+                    "order": 0
+                },
+                "at_time": {
+                    "data_type": "string",
+                    "description": "Optional RFC3339/ISO 8601 timestamp for the seed lookup",
+                    "required": false,
+                    "order": 1
+                },
+                "page_size": {
+                    "data_type": "numeric",
+                    "description": "Maximum number of related assets to return",
+                    "required": false,
+                    "default": 100,
+                    "order": 2
+                },
+                "page_token": {
+                    "data_type": "string",
+                    "description": "Pagination token from prior response",
+                    "required": false,
+                    "order": 3
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.host_id",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.at_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.page_size",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.page_token",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.generated_query",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.seed_host.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.total_hits",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.next_page_token",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.hits.*.host_v1.resource.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.hits.*.webproperty_v1.resource.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.seed_host",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.generated_query",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.total_hits",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.returned_hits",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.next_page_token_present",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_related_assets_from_host",
+                "title": "Related Assets (Host Seed)"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "find related assets from web",
+            "identifier": "find_related_assets_from_web",
+            "description": "Generate and execute a related-assets search from a web property seed",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "hostname": {
+                    "data_type": "string",
+                    "description": "Web property hostname seed",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ],
+                    "order": 0
+                },
+                "port": {
+                    "data_type": "numeric",
+                    "description": "Web property port",
+                    "required": true,
+                    "order": 1
+                },
+                "at_time": {
+                    "data_type": "string",
+                    "description": "Optional RFC3339/ISO 8601 timestamp for the seed lookup",
+                    "required": false,
+                    "order": 2
+                },
+                "page_size": {
+                    "data_type": "numeric",
+                    "description": "Maximum number of related assets to return",
+                    "required": false,
+                    "default": 100,
+                    "order": 3
+                },
+                "page_token": {
+                    "data_type": "string",
+                    "description": "Pagination token from prior response",
+                    "required": false,
+                    "order": 4
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.at_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.page_size",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.page_token",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.generated_query",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.seed_web_property.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.seed_web_property.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.total_hits",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.next_page_token",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.hits.*.host_v1.resource.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.search_result.hits.*.webproperty_v1.resource.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.seed_web_property",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.generated_query",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.total_hits",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.returned_hits",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.next_page_token_present",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_related_assets_from_web",
+                "title": "Related Assets (Web Seed)"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "live rescan",
+            "identifier": "live_rescan",
+            "description": "Initiate a live rescan and wait for completion, then return a baseline-vs-post change log",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "ip": {
+                    "data_type": "string",
+                    "description": "Service target IP address",
+                    "required": false,
+                    "primary": true,
+                    "contains": [
+                        "ip"
+                    ],
+                    "order": 0
+                },
+                "hostname": {
+                    "data_type": "string",
+                    "description": "Web target hostname",
+                    "required": false,
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ],
+                    "order": 1
+                },
+                "port": {
+                    "data_type": "numeric",
+                    "description": "Target port",
+                    "required": true,
+                    "order": 2
+                },
+                "protocol": {
+                    "data_type": "string",
+                    "description": "Service protocol (required for service target)",
+                    "required": false,
+                    "order": 3
+                },
+                "transport_protocol": {
+                    "data_type": "string",
+                    "description": "Service transport protocol (unknown, tcp, udp, icmp, quic) for service target",
+                    "required": false,
+                    "default": "tcp",
+                    "order": 4
+                },
+                "target_type": {
+                    "data_type": "string",
+                    "description": "Optional explicit target type override: service_id or web_origin",
+                    "required": false,
+                    "order": 5
+                },
+                "wait_timeout_seconds": {
+                    "data_type": "numeric",
+                    "description": "Maximum wait time before polling times out",
+                    "required": false,
+                    "default": 900,
+                    "order": 6
+                },
+                "max_diff_entries": {
+                    "data_type": "numeric",
+                    "description": "Maximum number of diff rows to include in the change log",
+                    "required": false,
+                    "default": 200,
+                    "order": 7
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.protocol",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.transport_protocol",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.target_type",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.wait_timeout_seconds",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.max_diff_entries",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.target_type",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.initial_tracked_scan.tracked_scan_id",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.final_tracked_scan.tracked_scan_id",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.final_tracked_scan.completed",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.final_tracked_scan.tasks.*.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.pre_lookup.lookup_type",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.post_lookup.lookup_type",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.diff_entries.*.change_type",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.diff_entries.*.path",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.diff_entries.*.before",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.diff_entries.*.after",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.diff_truncated",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.tracked_scan_id",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.target_type",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.completed",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.poll_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.duration_seconds",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.latest_task_status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.change_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.diff_truncated",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_live_rescan",
+                "title": "Live Rescan Results"
+            },
+            "versions": "EQ(*)"
+        },
+        {
             "action": "search",
             "identifier": "search",
             "description": "Search Censys assets using a CenQL query",
