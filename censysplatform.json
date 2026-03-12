@@ -14,7 +14,7 @@
     "latest_tested_versions": [
         "Censys Platform API v3"
     ],
-    "utctime_updated": "2026-02-18T00:00:00.000000Z",
+    "utctime_updated": "2026-03-12T06:28:40.358672Z",
     "package_name": "phantom_censysplatform",
     "main_module": "censysplatform_connector.py",
     "app_config_render": "default",
