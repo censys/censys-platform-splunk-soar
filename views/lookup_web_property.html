@@ -1,0 +1,167 @@
+<!--
+ Copyright (c) 2026 Splunk Inc.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+{% extends 'widgets/widget_template.html' %}
+{% load custom_template %}
+{% block custom_title_prop %}
+  {% if title_logo %}
+    style="background-size: auto 60%; background-position: 50%; background-repeat: no-repeat; background-image: url('/app_resource/{{ title_logo }}');"
+  {% endif %}
+{% endblock %}
+{% block title1 %}{{ title1 }}{% endblock %}
+{% block title2 %}{{ title2 }}{% endblock %}
+{% block custom_tools %}{% endblock %}
+{% block widget_content %}
+  <style>
+  .censys-kv td:first-child {
+    min-width: 190px;
+    padding-right: 16px !important;
+    white-space: nowrap;
+  }
+  .censys-kv td:last-child {
+    padding-left: 16px !important;
+  }
+  </style>
+  {% for result in results %}
+    <h4>Web Property Lookup</h4>
+    <table class="wf-table-vertical datatable censys-kv">
+      <tr>
+        <td>
+          <b>Hostname</b>
+        </td>
+        <td>{{ result.hostname }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Port</b>
+        </td>
+        <td>{{ result.port }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Scan Time</b>
+        </td>
+        <td>{{ result.scan_time }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Labels</b>
+        </td>
+        <td>{{ result.labels|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Threats</b>
+        </td>
+        <td>{{ result.threats|join:", " }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Vulns</b>
+        </td>
+        <td>{{ result.vulns|join:", " }}</td>
+      </tr>
+    </table>
+    {% if result.software %}
+      <h4>Software</h4>
+      <table class="wf-table-horizontal datatable">
+        <thead>
+          <tr>
+            <th>Vendor</th>
+            <th>Product</th>
+            <th>Version</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sw in result.software %}
+            <tr>
+              <td>{{ sw.vendor }}</td>
+              <td>{{ sw.product }}</td>
+              <td>{{ sw.version }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+    {% if result.endpoints %}
+      <h4>Endpoints</h4>
+      <table class="wf-table-horizontal datatable">
+        <thead>
+          <tr>
+            <th>Endpoint Type</th>
+            <th>Path</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for endpoint in result.endpoints %}
+            <tr>
+              <td>{{ endpoint.endpoint_type }}</td>
+              <td>{{ endpoint.path }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+    {% if result.cert.fingerprint_sha256 %}
+      <h4>Certificate</h4>
+      <table class="wf-table-vertical datatable censys-kv">
+        <tr>
+          <td>
+            <b>Fingerprint (SHA256)</b>
+          </td>
+          <td>{{ result.cert.fingerprint_sha256 }}</td>
+        </tr>
+        <tr>
+          <td>
+            <b>Subject DN</b>
+          </td>
+          <td>{{ result.cert.subject_dn }}</td>
+        </tr>
+        <tr>
+          <td>
+            <b>Issuer DN</b>
+          </td>
+          <td>{{ result.cert.issuer_dn }}</td>
+        </tr>
+        <tr>
+          <td>
+            <b>Common Names</b>
+          </td>
+          <td>{{ result.cert.common_names|join:", " }}</td>
+        </tr>
+        <tr>
+          <td>
+            <b>Valid From</b>
+          </td>
+          <td>{{ result.cert.valid_from }}</td>
+        </tr>
+        <tr>
+          <td>
+            <b>Valid To</b>
+          </td>
+          <td>{{ result.cert.valid_to }}</td>
+        </tr>
+        <tr>
+          <td>
+            <b>Self Signed</b>
+          </td>
+          <td>{{ result.cert.self_signed }}</td>
+        </tr>
+      </table>
+    {% endif %}
+  {% empty %}
+    No web property results parsed for this action run.
+  {% endfor %}
+{% endblock %}

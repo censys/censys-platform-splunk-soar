@@ -1,38 +1,51 @@
 {
-    "appid": "ffffffff-ffff-4fff-afff-ffffffffffff",
-    "name": "Example App Name",
-    "description": "Brief description of the app",
+    "appid": "15d8b3a4-9910-4ac8-bd64-933168fc03ca",
+    "name": "Censys for Splunk SOAR",
+    "description": "This app implements investigative actions to get IP, domain and certificate data from the Censys Platform.",
     "type": "information",
-    "product_vendor": "Vendor Name",
-    "logo": "logo.svg",
-    "logo_dark": "logo_dark.svg",
-    "product_name": "Product Name",
+    "product_vendor": "Censys",
+    "logo": "censysplatform_logo.svg",
+    "logo_dark": "censysplatform_logo_dark.svg",
+    "product_name": "Censys Platform",
     "product_version_regex": ".*",
-    "publisher": "Splunk",
-    "license": "Copyright (c) 2025 Splunk Inc.",
-    "app_version": "1.0.1",
+    "publisher": "Censys",
+    "license": "Copyright (c) 2026 Censys",
+    "app_version": "1.0.0",
     "latest_tested_versions": [
-        "Version X.Y.Z, Month Year"
+        "Censys Platform API v3"
     ],
-    "utctime_updated": "2025-08-01T20:30:47.300351Z",
+    "utctime_updated": "2026-02-18T00:00:00.000000Z",
     "package_name": "phantom_censysplatform",
     "main_module": "censysplatform_connector.py",
     "app_config_render": "default",
     "min_phantom_version": "6.3.0",
-    "python_version": "3.9, 3.13",
-    "fips_compliant": true,
+    "python_version": "3.13",
+    "fips_compliant": false,
     "app_wizard_version": "1.0.0",
+    "contributors": [
+        {
+            "name": "Censys",
+            "email": "support@censys.com"
+        }
+    ],
     "configuration": {
-        "host": {
+        "base_url": {
             "data_type": "string",
             "order": 0,
-            "description": "Example Hostname or IP address",
+            "description": "Base URL for Censys Platform API",
+            "default": "https://api.platform.censys.io",
+            "required": false
+        },
+        "api_token": {
+            "data_type": "password",
+            "order": 1,
+            "description": "Personal access token for authentication",
             "required": true
         },
-        "api_key": {
+        "organization_id": {
             "data_type": "string",
-            "order": 1,
-            "description": "Example API Key for authentication",
+            "order": 2,
+            "description": "Organization UUID used to scope requests",
             "required": true
         }
     },
@@ -44,8 +57,449 @@
             "type": "test",
             "read_only": true,
             "parameters": {},
-            "output": [],
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                }
+            ],
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "lookup host",
+            "identifier": "lookup_host",
+            "description": "Retrieve a host by IPv4 or IPv6 address",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "ip": {
+                    "data_type": "string",
+                    "description": "IPv4 or IPv6 address for lookup",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "ip"
+                    ],
+                    "order": 0
+                },
+                "at_time": {
+                    "data_type": "string",
+                    "description": "Optional ISO 8601 timestamp for historical lookup",
+                    "required": false,
+                    "order": 1
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.service_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.ports",
+                    "data_type": "string",
+                    "contains": [
+                        "port"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.scan_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.at_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_host",
+                "title": "Host Lookup Results"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "lookup cert",
+            "identifier": "lookup_cert",
+            "description": "Retrieve a certificate by SHA256 fingerprint",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "fingerprint_sha256": {
+                    "data_type": "string",
+                    "description": "Certificate SHA256 fingerprint",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ],
+                    "order": 0
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.fingerprint_sha256",
+                    "data_type": "string",
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.fingerprint_sha256",
+                    "data_type": "string",
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.display_name",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.fingerprint_sha256",
+                    "data_type": "string",
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ]
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_cert",
+                "title": "Certificate Lookup Results"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "lookup web property",
+            "identifier": "lookup_web_property",
+            "description": "Retrieve a web property by hostname and port",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "hostname": {
+                    "data_type": "string",
+                    "description": "Hostname or IP address for lookup",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ],
+                    "order": 0
+                },
+                "port": {
+                    "data_type": "numeric",
+                    "description": "TCP port value (1-65535)",
+                    "required": true,
+                    "order": 1
+                },
+                "at_time": {
+                    "data_type": "string",
+                    "description": "Optional ISO 8601 timestamp for historical lookup",
+                    "required": false,
+                    "order": 2
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.endpoint_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.hostname",
+                    "data_type": "string",
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.port",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.endpoints",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.scan_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.at_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_web_property",
+                "title": "Web Property Lookup Results"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "search",
+            "identifier": "search",
+            "description": "Search Censys assets using a CenQL query",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "query": {
+                    "data_type": "string",
+                    "description": "CenQL query string",
+                    "required": true,
+                    "primary": true,
+                    "order": 0
+                },
+                "page_size": {
+                    "data_type": "numeric",
+                    "description": "Maximum number of results to return",
+                    "required": false,
+                    "default": 100,
+                    "order": 1
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.query",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.query_duration_millis",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.total_hits",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.hit_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.page_size",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_search",
+                "title": "Search Results"
+            },
             "versions": "EQ(*)"
         }
-    ]
+    ],
+    "pip313_dependencies": {
+        "wheel": [
+            {
+                "module": "annotated_types",
+                "input_file": "wheels/py3/annotated_types-0.7.0-py3-none-any.whl"
+            },
+            {
+                "module": "anyio",
+                "input_file": "wheels/py3/anyio-4.12.1-py3-none-any.whl"
+            },
+            {
+                "module": "censys_platform",
+                "input_file": "wheels/py3/censys_platform-0.13.1-py3-none-any.whl"
+            },
+            {
+                "module": "h11",
+                "input_file": "wheels/py3/h11-0.16.0-py3-none-any.whl"
+            },
+            {
+                "module": "httpcore",
+                "input_file": "wheels/py3/httpcore-1.0.9-py3-none-any.whl"
+            },
+            {
+                "module": "httpx",
+                "input_file": "wheels/py3/httpx-0.28.1-py3-none-any.whl"
+            },
+            {
+                "module": "pydantic",
+                "input_file": "wheels/py3/pydantic-2.12.5-py3-none-any.whl"
+            },
+            {
+                "module": "pydantic_core",
+                "input_file": "wheels/py313/pydantic_core-2.41.5-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
+            },
+            {
+                "module": "typing_extensions",
+                "input_file": "wheels/py3/typing_extensions-4.15.0-py3-none-any.whl"
+            },
+            {
+                "module": "typing_inspection",
+                "input_file": "wheels/py3/typing_inspection-0.4.2-py3-none-any.whl"
+            }
+        ]
+    },
+    "pip39_dependencies": {
+        "wheel": [
+            {
+                "module": "annotated_types",
+                "input_file": "wheels/py3/annotated_types-0.7.0-py3-none-any.whl"
+            },
+            {
+                "module": "anyio",
+                "input_file": "wheels/py3/anyio-4.12.1-py3-none-any.whl"
+            },
+            {
+                "module": "censys_platform",
+                "input_file": "wheels/py3/censys_platform-0.12.1-py3-none-any.whl"
+            },
+            {
+                "module": "exceptiongroup",
+                "input_file": "wheels/py3/exceptiongroup-1.3.1-py3-none-any.whl"
+            },
+            {
+                "module": "h11",
+                "input_file": "wheels/py3/h11-0.16.0-py3-none-any.whl"
+            },
+            {
+                "module": "httpcore",
+                "input_file": "wheels/py3/httpcore-1.0.9-py3-none-any.whl"
+            },
+            {
+                "module": "httpx",
+                "input_file": "wheels/py3/httpx-0.28.1-py3-none-any.whl"
+            },
+            {
+                "module": "pydantic",
+                "input_file": "wheels/py3/pydantic-2.12.5-py3-none-any.whl"
+            },
+            {
+                "module": "pydantic_core",
+                "input_file": "wheels/py39/pydantic_core-2.41.5-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
+            },
+            {
+                "module": "typing_extensions",
+                "input_file": "wheels/py3/typing_extensions-4.15.0-py3-none-any.whl"
+            },
+            {
+                "module": "typing_inspection",
+                "input_file": "wheels/py3/typing_inspection-0.4.2-py3-none-any.whl"
+            }
+        ]
+    }
 }

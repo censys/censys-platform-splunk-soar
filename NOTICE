@@ -1,0 +1,12 @@
+Splunk SOAR App: Censys for Splunk SOAR
+Copyright (c) 2026 Censys
+Third Party Software Attributions:
+
+@@@@============================================================================
+
+Library: censys-platform - 0.13.1
+Homepage: https://github.com/censys/censys-sdk-python.git
+License: UNKNOWN
+License Text:
+
+Please navigate to https://github.com/censys/censys-sdk-python.git to obtain a copy of the license.
