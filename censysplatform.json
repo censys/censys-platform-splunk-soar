@@ -345,13 +345,13 @@
         {
             "action": "get host event history",
             "identifier": "get_host_event_history",
-            "description": "Retrieve host event history for an IP and time window",
+            "description": "Retrieve event history for a host. A host ID is its IP address",
             "type": "investigate",
             "read_only": true,
             "parameters": {
                 "host_id": {
                     "data_type": "string",
-                    "description": "Host IP address",
+                    "description": "The IP address of a host",
                     "required": true,
                     "primary": true,
                     "contains": [
@@ -361,13 +361,13 @@
                 },
                 "start_time": {
                     "data_type": "string",
-                    "description": "Upper RFC3339/ISO 8601 timestamp bound (newer time)",
+                    "description": "Newer RFC3339 timestamp for the host timeline. Equivalent to the To field in the event history UI",
                     "required": true,
                     "order": 1
                 },
                 "end_time": {
                     "data_type": "string",
-                    "description": "Lower RFC3339/ISO 8601 timestamp bound (older time)",
+                    "description": "Older RFC3339 timestamp for the host timeline. Equivalent to the From field in the event history UI",
                     "required": true,
                     "order": 2
                 }
@@ -461,13 +461,13 @@
         {
             "action": "get host service history",
             "identifier": "get_host_service_history",
-            "description": "Retrieve historical service observations for a host",
+            "description": "Retrieve historical service observations for a host. This endpoint returns time ranges during which services were detected on the host",
             "type": "investigate",
             "read_only": true,
             "parameters": {
                 "host_id": {
                     "data_type": "string",
-                    "description": "Host IP address",
+                    "description": "The IP address of a host",
                     "required": true,
                     "primary": true,
                     "contains": [
@@ -477,50 +477,50 @@
                 },
                 "start_time": {
                     "data_type": "string",
-                    "description": "Optional RFC3339/ISO 8601 start timestamp",
+                    "description": "Start of date range in RFC3339 format. If omitted, defaults to the maximum query window back from end_time",
                     "required": false,
                     "order": 1
                 },
                 "end_time": {
                     "data_type": "string",
-                    "description": "Optional RFC3339/ISO 8601 end timestamp",
+                    "description": "End of date range in RFC3339 format. If omitted, defaults to now. Cannot be in the future",
                     "required": false,
                     "order": 2
                 },
                 "page_size": {
                     "data_type": "numeric",
-                    "description": "Maximum rows to return (1-100)",
+                    "description": "Number of results per page (max 100)",
                     "required": false,
                     "default": 100,
                     "order": 3
                 },
                 "page_token": {
                     "data_type": "string",
-                    "description": "Pagination token from prior response",
+                    "description": "Pagination token from previous response",
                     "required": false,
                     "order": 4
                 },
                 "port": {
                     "data_type": "numeric",
-                    "description": "Optional service port filter",
+                    "description": "Filter by port number",
                     "required": false,
                     "order": 5
                 },
                 "protocol": {
                     "data_type": "string",
-                    "description": "Optional application protocol filter",
+                    "description": "Filter by application protocol",
                     "required": false,
                     "order": 6
                 },
                 "transport_protocol": {
                     "data_type": "string",
-                    "description": "Optional transport protocol filter (tcp, udp, quic)",
+                    "description": "Filter by transport protocol (tcp, udp, quic)",
                     "required": false,
                     "order": 7
                 },
                 "order_by": {
                     "data_type": "string",
-                    "description": "Optional comma-separated order list (e.g. port ASC,protocol DESC)",
+                    "description": "Comma-separated sort fields, for example port DESC,protocol ASC",
                     "required": false,
                     "order": 8
                 }

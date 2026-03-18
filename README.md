@@ -24,8 +24,8 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 [lookup host](#action-lookup-host) - Retrieve a host by IPv4 or IPv6 address <br>
 [lookup cert](#action-lookup-cert) - Retrieve a certificate by SHA256 fingerprint <br>
 [lookup web property](#action-lookup-web-property) - Retrieve a web property by hostname and port <br>
-[get host event history](#action-get-host-event-history) - Retrieve host event history for an IP and time window <br>
-[get host service history](#action-get-host-service-history) - Retrieve historical service observations for a host <br>
+[get host event history](#action-get-host-event-history) - Retrieve event history for a host. A host ID is its IP address <br>
+[get host service history](#action-get-host-service-history) - Retrieve historical service observations for a host. This endpoint returns time ranges during which services were detected on the host <br>
 [find related infrastructure](#action-find-related-infrastructure) - Create a CensEye job for a host, web property, or certificate target and return related infrastructure pivot results <br>
 [live rescan](#action-live-rescan) - Initiate a live rescan and wait for completion, then return a baseline-vs-post change log <br>
 [search](#action-search) - Search Censys assets using a CenQL query
@@ -140,7 +140,7 @@ summary.total_objects_successful | numeric | | |
 
 ## action: 'get host event history'
 
-Retrieve host event history for an IP and time window
+Retrieve event history for a host. A host ID is its IP address
 
 Type: **investigate** <br>
 Read only: **True**
@@ -149,9 +149,9 @@ Read only: **True**
 
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
-**host_id** | required | Host IP address | string | `ip` |
-**start_time** | required | Upper RFC3339/ISO 8601 timestamp bound (newer time) | string | |
-**end_time** | required | Lower RFC3339/ISO 8601 timestamp bound (older time) | string | |
+**host_id** | required | The IP address of a host | string | `ip` |
+**start_time** | required | Newer RFC3339 timestamp for the host timeline. Equivalent to the To field in the event history UI | string | |
+**end_time** | required | Older RFC3339 timestamp for the host timeline. Equivalent to the From field in the event history UI | string | |
 
 #### Action Output
 
@@ -177,7 +177,7 @@ summary.total_objects_successful | numeric | | |
 
 ## action: 'get host service history'
 
-Retrieve historical service observations for a host
+Retrieve historical service observations for a host. This endpoint returns time ranges during which services were detected on the host
 
 Type: **investigate** <br>
 Read only: **True**
@@ -186,15 +186,15 @@ Read only: **True**
 
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
-**host_id** | required | Host IP address | string | `ip` |
-**start_time** | optional | Optional RFC3339/ISO 8601 start timestamp | string | |
-**end_time** | optional | Optional RFC3339/ISO 8601 end timestamp | string | |
-**page_size** | optional | Maximum rows to return (1-100) | numeric | |
-**page_token** | optional | Pagination token from prior response | string | |
-**port** | optional | Optional service port filter | numeric | |
-**protocol** | optional | Optional application protocol filter | string | |
-**transport_protocol** | optional | Optional transport protocol filter (tcp, udp, quic) | string | |
-**order_by** | optional | Optional comma-separated order list (e.g. port ASC,protocol DESC) | string | |
+**host_id** | required | The IP address of a host | string | `ip` |
+**start_time** | optional | Start of date range in RFC3339 format. If omitted, defaults to the maximum query window back from end_time | string | |
+**end_time** | optional | End of date range in RFC3339 format. If omitted, defaults to now. Cannot be in the future | string | |
+**page_size** | optional | Number of results per page (max 100) | numeric | |
+**page_token** | optional | Pagination token from previous response | string | |
+**port** | optional | Filter by port number | numeric | |
+**protocol** | optional | Filter by application protocol | string | |
+**transport_protocol** | optional | Filter by transport protocol (tcp, udp, quic) | string | |
+**order_by** | optional | Comma-separated sort fields, for example port DESC,protocol ASC | string | |
 
 #### Action Output
 
