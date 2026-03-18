@@ -20,9 +20,7 @@ import re
 import time
 import uuid
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.parse import quote_plus, urlencode
-from urllib.request import Request, urlopen
+from urllib.parse import quote_plus
 
 import phantom.app as phantom
 from censys_platform import SDK, models
@@ -234,44 +232,48 @@ class CensysplatformConnector(BaseConnector):
                 if value is not None and value != "":
                     params[key] = value
 
-        url = f"{self._base_url}{path}"
-        if params:
-            url = f"{url}?{urlencode(params)}"
-
-        headers = {
-            "Accept": "application/json",
-            "Authorization": f"Bearer {self._api_token}",
-        }
-        data = None
-        if body is not None:
-            headers["Content-Type"] = "application/json"
-            data = json.dumps(body).encode("utf-8")
-
-        request = Request(url=url, data=data, headers=headers, method=method.upper())
-
         try:
-            with urlopen(request, timeout=timeout) as response:
-                raw_body = response.read()
-        except HTTPError as err:
-            error_body = err.read().decode("utf-8", errors="replace")
-            error_detail = error_body.strip()
+            with self._create_sdk() as sdk:
+                client = sdk.sdk_configuration.client
+                if client is None:
+                    return None, "Censys SDK client is not initialized"
+
+                headers = {
+                    "Accept": "application/json",
+                    "Authorization": f"Bearer {self._api_token}",
+                    "User-Agent": sdk.sdk_configuration.user_agent,
+                }
+                if body is not None:
+                    headers["Content-Type"] = "application/json"
+
+                request = client.build_request(
+                    method.upper(),
+                    f"{self._base_url}{path}",
+                    json=body,
+                    params=params,
+                    headers=headers,
+                    timeout=timeout,
+                )
+                response = client.send(request)
+        except Exception as err:
+            return None, f"Failed to call Censys Platform for '{path}': {err!s}"
+
+        raw_body = response.text
+        if response.status_code >= 400:
+            error_detail = raw_body.strip()
             try:
-                parsed_error = json.loads(error_body) if error_body else {}
+                parsed_error = json.loads(raw_body) if raw_body else {}
                 if isinstance(parsed_error, dict):
                     error_detail = str(parsed_error.get("detail") or parsed_error.get("message") or parsed_error.get("title") or error_detail)
             except json.JSONDecodeError:
                 pass
-            return None, f"HTTP {err.code} calling '{path}': {error_detail or err.reason}"
-        except URLError as err:
-            return None, f"Failed to connect to Censys Platform for '{path}': {err.reason}"
-        except Exception as err:
-            return None, f"Failed to call Censys Platform for '{path}': {err!s}"
+            return None, f"HTTP {response.status_code} calling '{path}': {error_detail or response.reason_phrase}"
 
         if not raw_body:
             return {}, None
 
         try:
-            payload = json.loads(raw_body.decode("utf-8"))
+            payload = json.loads(raw_body)
         except json.JSONDecodeError as err:
             return None, f"Received a non-JSON response from '{path}': {err!s}"
 
