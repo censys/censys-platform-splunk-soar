@@ -24,8 +24,8 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 [lookup host](#action-lookup-host) - Retrieve a host by IPv4 or IPv6 address <br>
 [lookup cert](#action-lookup-cert) - Retrieve a certificate by SHA256 fingerprint <br>
 [lookup web property](#action-lookup-web-property) - Retrieve a web property by hostname and port <br>
-[get host event history](#action-get-host-event-history) - Retrieve event history for a host. A host ID is its IP address <br>
-[get host service history](#action-get-host-service-history) - Retrieve historical service observations for a host. This endpoint returns time ranges during which services were detected on the host <br>
+[get host event history](#action-get-host-event-history) - Retrieve event history for a host <br>
+[get host service history](#action-get-host-service-history) - Retrieve historical service observations for a host <br>
 [find related infrastructure](#action-find-related-infrastructure) - Create a CensEye job for a host, web property, or certificate target and return related infrastructure pivot results <br>
 [live rescan](#action-live-rescan) - Initiate a live rescan and wait for completion, then return a baseline-vs-post change log <br>
 [search](#action-search) - Search Censys assets using a CenQL query
@@ -140,7 +140,7 @@ summary.total_objects_successful | numeric | | |
 
 ## action: 'get host event history'
 
-Retrieve event history for a host. A host ID is its IP address
+Retrieve event history for a host
 
 Type: **investigate** <br>
 Read only: **True**
@@ -177,7 +177,7 @@ summary.total_objects_successful | numeric | | |
 
 ## action: 'get host service history'
 
-Retrieve historical service observations for a host. This endpoint returns time ranges during which services were detected on the host
+Retrieve historical service observations for a host
 
 Type: **investigate** <br>
 Read only: **True**

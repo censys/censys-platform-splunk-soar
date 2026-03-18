@@ -345,7 +345,7 @@
         {
             "action": "get host event history",
             "identifier": "get_host_event_history",
-            "description": "Retrieve event history for a host. A host ID is its IP address",
+            "description": "Retrieve event history for a host",
             "type": "investigate",
             "read_only": true,
             "parameters": {
@@ -461,7 +461,7 @@
         {
             "action": "get host service history",
             "identifier": "get_host_service_history",
-            "description": "Retrieve historical service observations for a host. This endpoint returns time ranges during which services were detected on the host",
+            "description": "Retrieve historical service observations for a host",
             "type": "investigate",
             "read_only": true,
             "parameters": {
