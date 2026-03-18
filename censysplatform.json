@@ -669,49 +669,23 @@
             "type": "investigate",
             "read_only": true,
             "parameters": {
-                "host_id": {
+                "target_type": {
                     "data_type": "string",
-                    "description": "Host IP address target for the CensEye job",
-                    "required": false,
-                    "primary": true,
-                    "contains": [
-                        "ip"
+                    "description": "Target type for the CensEye job",
+                    "required": true,
+                    "value_list": [
+                        "host",
+                        "web property",
+                        "certificate"
                     ],
                     "order": 0
                 },
-                "webproperty_id": {
+                "target_value": {
                     "data_type": "string",
-                    "description": "Web property target in '<hostname>:<port>' format",
-                    "required": false,
-                    "contains": [
-                        "domain",
-                        "ip"
-                    ],
+                    "description": "Target value. Use an IP for host, '<hostname>:<port>' for web property, or a SHA256 fingerprint for certificate",
+                    "required": true,
+                    "primary": true,
                     "order": 1
-                },
-                "certificate_id": {
-                    "data_type": "string",
-                    "description": "Certificate SHA256 fingerprint target",
-                    "required": false,
-                    "contains": [
-                        "sha256",
-                        "hash"
-                    ],
-                    "order": 2
-                },
-                "page_size": {
-                    "data_type": "numeric",
-                    "description": "Maximum number of pivot rows to fetch from the completed CensEye job",
-                    "required": false,
-                    "default": 100,
-                    "order": 3
-                },
-                "wait_timeout_seconds": {
-                    "data_type": "numeric",
-                    "description": "Maximum wait time for the asynchronous CensEye job to complete",
-                    "required": false,
-                    "default": 300,
-                    "order": 4
                 }
             },
             "output": [
@@ -720,35 +694,12 @@
                     "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.parameter.host_id",
-                    "data_type": "string",
-                    "contains": [
-                        "ip"
-                    ]
+                    "data_path": "action_result.parameter.target_type",
+                    "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.parameter.webproperty_id",
-                    "data_type": "string",
-                    "contains": [
-                        "domain",
-                        "ip"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.certificate_id",
-                    "data_type": "string",
-                    "contains": [
-                        "sha256",
-                        "hash"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.page_size",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.parameter.wait_timeout_seconds",
-                    "data_type": "numeric"
+                    "data_path": "action_result.parameter.target_value",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.data.*.target_type",

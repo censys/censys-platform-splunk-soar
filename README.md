@@ -241,22 +241,16 @@ Read only: **True**
 
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
-**host_id** | optional | Host IP address target for the CensEye job | string | `ip` |
-**webproperty_id** | optional | Web property target in '<hostname>:<port>' format | string | `domain` `ip` |
-**certificate_id** | optional | Certificate SHA256 fingerprint target | string | `sha256` `hash` |
-**page_size** | optional | Maximum number of pivot rows to fetch from the completed CensEye job | numeric | |
-**wait_timeout_seconds** | optional | Maximum wait time for the asynchronous CensEye job to complete | numeric | |
+**target_type** | required | Target type for the CensEye job | string | |
+**target_value** | required | Target value. Use an IP for host, '<hostname>:<port>' for web property, or a SHA256 fingerprint for certificate | string | |
 
 #### Action Output
 
 DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 --------- | ---- | -------- | --------------
 action_result.status | string | | |
-action_result.parameter.host_id | string | `ip` | |
-action_result.parameter.webproperty_id | string | `domain` `ip` | |
-action_result.parameter.certificate_id | string | `sha256` `hash` | |
-action_result.parameter.page_size | numeric | | |
-action_result.parameter.wait_timeout_seconds | numeric | | |
+action_result.parameter.target_type | string | | |
+action_result.parameter.target_value | string | | |
 action_result.data.\*.target_type | string | | |
 action_result.data.\*.target_value | string | | |
 action_result.data.\*.job.job_id | string | | |

@@ -37,6 +37,8 @@ from censysplatform_consts import (
     ACTION_ID_LOOKUP_WEB_PROPERTY,
     ACTION_ID_SEARCH,
     ACTION_ID_TEST_CONNECTIVITY,
+    CENSYSPLATFORM_CENS_EYE_DEFAULT_PAGE_SIZE,
+    CENSYSPLATFORM_CENS_EYE_DEFAULT_WAIT_TIMEOUT_SECONDS,
     CENSYSPLATFORM_DEFAULT_BASE_URL,
     CENSYSPLATFORM_DEFAULT_UI_URL,
     CENSYSPLATFORM_ERR_CONNECTIVITY_TEST,
@@ -285,40 +287,31 @@ class CensysplatformConnector(BaseConnector):
         self,
         param: dict[str, Any],
     ) -> tuple[str | None, str | None, dict[str, Any] | None, str | None]:
-        host_id = (param.get("host_id", "") or "").strip()
-        webproperty_id = (param.get("webproperty_id", "") or "").strip()
-        certificate_id = (param.get("certificate_id", "") or "").strip().lower()
+        raw_target_type = (param.get("target_type", "") or "").strip().lower().replace(" ", "")
+        target_value = (param.get("target_value", "") or "").strip()
 
-        provided_targets = [
-            (name, value)
-            for name, value in (
-                ("host_id", host_id),
-                ("webproperty_id", webproperty_id),
-                ("certificate_id", certificate_id),
-            )
-            if value
-        ]
+        target_type_map = {
+            "host": "host_id",
+            "webproperty": "webproperty_id",
+            "certificate": "certificate_id",
+        }
+        if raw_target_type not in target_type_map:
+            return None, None, None, "Please select 'host', 'web property', or 'certificate' in 'target_type'"
+        if not target_value:
+            return None, None, None, "Please provide a non-empty value in 'target_value'"
 
-        if len(provided_targets) != 1:
-            return (
-                None,
-                None,
-                None,
-                "Provide exactly one target: 'host_id', 'webproperty_id', or 'certificate_id'",
-            )
-
-        target_type, target_value = provided_targets[0]
+        target_type = target_type_map[raw_target_type]
         if target_type == "host_id":
             try:
                 ipaddress.ip_address(target_value)
             except ValueError:
-                return None, None, None, "Please provide a valid IPv4 or IPv6 value in 'host_id'"
+                return None, None, None, "For target type 'host', provide a valid IPv4 or IPv6 value in 'target_value'"
         elif target_type == "webproperty_id":
             if ":" not in target_value:
-                return None, None, None, "'webproperty_id' must be in '<hostname>:<port>' format"
+                return None, None, None, "For target type 'web property', 'target_value' must be in '<hostname>:<port>' format"
         elif target_type == "certificate_id":
             if not re.fullmatch(r"[A-Fa-f0-9]{64}", target_value):
-                return None, None, None, "'certificate_id' must be a 64-character SHA256 hex fingerprint"
+                return None, None, None, "For target type 'certificate', 'target_value' must be a 64-character SHA256 hex fingerprint"
 
         return target_type, target_value, {"target": {target_type: target_value}}, None
 
@@ -1058,20 +1051,8 @@ class CensysplatformConnector(BaseConnector):
         if target_type is None or target_value is None or request_body is None:
             return action_result.set_status(phantom.APP_ERROR, "Unable to build the CensEye job request")
 
-        page_size, page_size_error = self._coerce_int_param(param.get("page_size", 100), "page_size")
-        if page_size_error is not None:
-            return action_result.set_status(phantom.APP_ERROR, page_size_error)
-        if page_size is None or page_size < 1:
-            return action_result.set_status(phantom.APP_ERROR, "'page_size' must be greater than 0")
-
-        wait_timeout_seconds, wait_timeout_error = self._coerce_int_param(
-            param.get("wait_timeout_seconds", 300),
-            "wait_timeout_seconds",
-        )
-        if wait_timeout_error is not None:
-            return action_result.set_status(phantom.APP_ERROR, wait_timeout_error)
-        if wait_timeout_seconds is None or wait_timeout_seconds < 1:
-            return action_result.set_status(phantom.APP_ERROR, "'wait_timeout_seconds' must be greater than 0")
+        page_size = CENSYSPLATFORM_CENS_EYE_DEFAULT_PAGE_SIZE
+        wait_timeout_seconds = CENSYSPLATFORM_CENS_EYE_DEFAULT_WAIT_TIMEOUT_SECONDS
 
         self.save_progress(f"Creating CensEye pivot job for {target_type} '{target_value}'...")
         initial_job, create_error = self._create_censeye_job(request_body)
