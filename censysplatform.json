@@ -663,40 +663,55 @@
             "versions": "EQ(*)"
         },
         {
-            "action": "find related assets from host",
-            "identifier": "find_related_assets_from_host",
-            "description": "Generate and execute a related-assets search from a host seed",
+            "action": "find related infrastructure",
+            "identifier": "find_related_infrastructure",
+            "description": "Create a CensEye job for a host, web property, or certificate target and return related infrastructure pivot results",
             "type": "investigate",
             "read_only": true,
             "parameters": {
                 "host_id": {
                     "data_type": "string",
-                    "description": "Host IP address to use as the related-assets seed",
-                    "required": true,
+                    "description": "Host IP address target for the CensEye job",
+                    "required": false,
                     "primary": true,
                     "contains": [
                         "ip"
                     ],
                     "order": 0
                 },
-                "at_time": {
+                "webproperty_id": {
                     "data_type": "string",
-                    "description": "Optional RFC3339/ISO 8601 timestamp for the seed lookup",
+                    "description": "Web property target in '<hostname>:<port>' format",
                     "required": false,
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ],
                     "order": 1
+                },
+                "certificate_id": {
+                    "data_type": "string",
+                    "description": "Certificate SHA256 fingerprint target",
+                    "required": false,
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ],
+                    "order": 2
                 },
                 "page_size": {
                     "data_type": "numeric",
-                    "description": "Maximum number of related assets to return",
+                    "description": "Maximum number of pivot rows to fetch from the completed CensEye job",
                     "required": false,
                     "default": 100,
-                    "order": 2
-                },
-                "page_token": {
-                    "data_type": "string",
-                    "description": "Pagination token from prior response",
-                    "required": false,
                     "order": 3
+                },
+                "wait_timeout_seconds": {
+                    "data_type": "numeric",
+                    "description": "Maximum wait time for the asynchronous CensEye job to complete",
+                    "required": false,
+                    "default": 300,
+                    "order": 4
                 }
             },
             "output": [
@@ -712,71 +727,119 @@
                     ]
                 },
                 {
-                    "data_path": "action_result.parameter.at_time",
-                    "data_type": "string"
+                    "data_path": "action_result.parameter.webproperty_id",
+                    "data_type": "string",
+                    "contains": [
+                        "domain",
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.certificate_id",
+                    "data_type": "string",
+                    "contains": [
+                        "sha256",
+                        "hash"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.page_size",
                     "data_type": "numeric"
                 },
                 {
-                    "data_path": "action_result.parameter.page_token",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.data.*.generated_query",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.data.*.seed_host.ip",
-                    "data_type": "string",
-                    "contains": [
-                        "ip"
-                    ]
-                },
-                {
-                    "data_path": "action_result.data.*.search_result.total_hits",
+                    "data_path": "action_result.parameter.wait_timeout_seconds",
                     "data_type": "numeric"
                 },
                 {
-                    "data_path": "action_result.data.*.search_result.next_page_token",
+                    "data_path": "action_result.data.*.target_type",
                     "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.data.*.search_result.hits.*.host_v1.resource.ip",
-                    "data_type": "string",
-                    "contains": [
-                        "ip"
-                    ]
-                },
-                {
-                    "data_path": "action_result.data.*.search_result.hits.*.webproperty_v1.resource.hostname",
-                    "data_type": "string",
-                    "contains": [
-                        "domain"
-                    ]
-                },
-                {
-                    "data_path": "action_result.summary.seed_host",
-                    "data_type": "string",
-                    "contains": [
-                        "ip"
-                    ]
-                },
-                {
-                    "data_path": "action_result.summary.generated_query",
+                    "data_path": "action_result.data.*.target_value",
                     "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.summary.total_hits",
+                    "data_path": "action_result.data.*.job.job_id",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.job.state",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.job.at_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.job.create_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.job.update_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.job.delete_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.job.result_count",
                     "data_type": "numeric"
                 },
                 {
-                    "data_path": "action_result.summary.returned_hits",
+                    "data_path": "action_result.data.*.job_results.results.*.count",
                     "data_type": "numeric"
                 },
                 {
-                    "data_path": "action_result.summary.next_page_token_present",
+                    "data_path": "action_result.data.*.job_results.results.*.field_value_pairs.*.field",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.job_results.results.*.field_value_pairs.*.value",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.ui_url",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.poll_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.duration_seconds",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.target_type",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.target_value",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.job_id",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.state",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.result_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.returned_results",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.poll_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.duration_seconds",
                     "data_type": "numeric"
                 },
                 {
@@ -794,159 +857,8 @@
             ],
             "render": {
                 "type": "custom",
-                "view": "censysplatform_view.display_related_assets_from_host",
-                "title": "Related Assets (Host Seed)"
-            },
-            "versions": "EQ(*)"
-        },
-        {
-            "action": "find related assets from web",
-            "identifier": "find_related_assets_from_web",
-            "description": "Generate and execute a related-assets search from a web property seed",
-            "type": "investigate",
-            "read_only": true,
-            "parameters": {
-                "hostname": {
-                    "data_type": "string",
-                    "description": "Web property hostname seed",
-                    "required": true,
-                    "primary": true,
-                    "contains": [
-                        "domain",
-                        "ip"
-                    ],
-                    "order": 0
-                },
-                "port": {
-                    "data_type": "numeric",
-                    "description": "Web property port",
-                    "required": true,
-                    "order": 1
-                },
-                "at_time": {
-                    "data_type": "string",
-                    "description": "Optional RFC3339/ISO 8601 timestamp for the seed lookup",
-                    "required": false,
-                    "order": 2
-                },
-                "page_size": {
-                    "data_type": "numeric",
-                    "description": "Maximum number of related assets to return",
-                    "required": false,
-                    "default": 100,
-                    "order": 3
-                },
-                "page_token": {
-                    "data_type": "string",
-                    "description": "Pagination token from prior response",
-                    "required": false,
-                    "order": 4
-                }
-            },
-            "output": [
-                {
-                    "data_path": "action_result.status",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.parameter.hostname",
-                    "data_type": "string",
-                    "contains": [
-                        "domain",
-                        "ip"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.port",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.parameter.at_time",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.parameter.page_size",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.parameter.page_token",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.data.*.generated_query",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.data.*.seed_web_property.hostname",
-                    "data_type": "string",
-                    "contains": [
-                        "domain",
-                        "ip"
-                    ]
-                },
-                {
-                    "data_path": "action_result.data.*.seed_web_property.port",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.data.*.search_result.total_hits",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.data.*.search_result.next_page_token",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.data.*.search_result.hits.*.host_v1.resource.ip",
-                    "data_type": "string",
-                    "contains": [
-                        "ip"
-                    ]
-                },
-                {
-                    "data_path": "action_result.data.*.search_result.hits.*.webproperty_v1.resource.hostname",
-                    "data_type": "string",
-                    "contains": [
-                        "domain"
-                    ]
-                },
-                {
-                    "data_path": "action_result.summary.seed_web_property",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary.generated_query",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary.total_hits",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.summary.returned_hits",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.summary.next_page_token_present",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.message",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "summary.total_objects",
-                    "data_type": "numeric"
-                },
-                {
-                    "data_path": "summary.total_objects_successful",
-                    "data_type": "numeric"
-                }
-            ],
-            "render": {
-                "type": "custom",
-                "view": "censysplatform_view.display_related_assets_from_web",
-                "title": "Related Assets (Web Seed)"
+                "view": "censysplatform_view.display_related_infrastructure",
+                "title": "Related Infrastructure Results"
             },
             "versions": "EQ(*)"
         },

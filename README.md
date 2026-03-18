@@ -26,8 +26,7 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 [lookup web property](#action-lookup-web-property) - Retrieve a web property by hostname and port <br>
 [get host event history](#action-get-host-event-history) - Retrieve host event history for an IP and time window <br>
 [get host service history](#action-get-host-service-history) - Retrieve historical service observations for a host <br>
-[find related assets from host](#action-find-related-assets-from-host) - Generate and execute a related-assets search from a host seed <br>
-[find related assets from web](#action-find-related-assets-from-web) - Generate and execute a related-assets search from a web property seed <br>
+[find related infrastructure](#action-find-related-infrastructure) - Create a CensEye job for a host, web property, or certificate target and return related infrastructure pivot results <br>
 [live rescan](#action-live-rescan) - Initiate a live rescan and wait for completion, then return a baseline-vs-post change log <br>
 [search](#action-search) - Search Censys assets using a CenQL query
 
@@ -231,9 +230,9 @@ action_result.message | string | | |
 summary.total_objects | numeric | | |
 summary.total_objects_successful | numeric | | |
 
-## action: 'find related assets from host'
+## action: 'find related infrastructure'
 
-Generate and execute a related-assets search from a host seed
+Create a CensEye job for a host, web property, or certificate target and return related infrastructure pivot results
 
 Type: **investigate** <br>
 Read only: **True**
@@ -242,10 +241,11 @@ Read only: **True**
 
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
 --------- | -------- | ----------- | ---- | --------
-**host_id** | required | Host IP address to use as the related-assets seed | string | `ip` |
-**at_time** | optional | Optional RFC3339/ISO 8601 timestamp for the seed lookup | string | |
-**page_size** | optional | Maximum number of related assets to return | numeric | |
-**page_token** | optional | Pagination token from prior response | string | |
+**host_id** | optional | Host IP address target for the CensEye job | string | `ip` |
+**webproperty_id** | optional | Web property target in '<hostname>:<port>' format | string | `domain` `ip` |
+**certificate_id** | optional | Certificate SHA256 fingerprint target | string | `sha256` `hash` |
+**page_size** | optional | Maximum number of pivot rows to fetch from the completed CensEye job | numeric | |
+**wait_timeout_seconds** | optional | Maximum wait time for the asynchronous CensEye job to complete | numeric | |
 
 #### Action Output
 
@@ -253,63 +253,33 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 --------- | ---- | -------- | --------------
 action_result.status | string | | |
 action_result.parameter.host_id | string | `ip` | |
-action_result.parameter.at_time | string | | |
+action_result.parameter.webproperty_id | string | `domain` `ip` | |
+action_result.parameter.certificate_id | string | `sha256` `hash` | |
 action_result.parameter.page_size | numeric | | |
-action_result.parameter.page_token | string | | |
-action_result.data.\*.generated_query | string | | |
-action_result.data.\*.seed_host.ip | string | `ip` | |
-action_result.data.\*.search_result.total_hits | numeric | | |
-action_result.data.\*.search_result.next_page_token | string | | |
-action_result.data.\*.search_result.hits.\*.host_v1.resource.ip | string | `ip` | |
-action_result.data.\*.search_result.hits.\*.webproperty_v1.resource.hostname | string | `domain` | |
-action_result.summary.seed_host | string | `ip` | |
-action_result.summary.generated_query | string | | |
-action_result.summary.total_hits | numeric | | |
-action_result.summary.returned_hits | numeric | | |
-action_result.summary.next_page_token_present | numeric | | |
-action_result.message | string | | |
-summary.total_objects | numeric | | |
-summary.total_objects_successful | numeric | | |
-
-## action: 'find related assets from web'
-
-Generate and execute a related-assets search from a web property seed
-
-Type: **investigate** <br>
-Read only: **True**
-
-#### Action Parameters
-
-PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
---------- | -------- | ----------- | ---- | --------
-**hostname** | required | Web property hostname seed | string | `domain` `ip` |
-**port** | required | Web property port | numeric | |
-**at_time** | optional | Optional RFC3339/ISO 8601 timestamp for the seed lookup | string | |
-**page_size** | optional | Maximum number of related assets to return | numeric | |
-**page_token** | optional | Pagination token from prior response | string | |
-
-#### Action Output
-
-DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
---------- | ---- | -------- | --------------
-action_result.status | string | | |
-action_result.parameter.hostname | string | `domain` `ip` | |
-action_result.parameter.port | numeric | | |
-action_result.parameter.at_time | string | | |
-action_result.parameter.page_size | numeric | | |
-action_result.parameter.page_token | string | | |
-action_result.data.\*.generated_query | string | | |
-action_result.data.\*.seed_web_property.hostname | string | `domain` `ip` | |
-action_result.data.\*.seed_web_property.port | numeric | | |
-action_result.data.\*.search_result.total_hits | numeric | | |
-action_result.data.\*.search_result.next_page_token | string | | |
-action_result.data.\*.search_result.hits.\*.host_v1.resource.ip | string | `ip` | |
-action_result.data.\*.search_result.hits.\*.webproperty_v1.resource.hostname | string | `domain` | |
-action_result.summary.seed_web_property | string | | |
-action_result.summary.generated_query | string | | |
-action_result.summary.total_hits | numeric | | |
-action_result.summary.returned_hits | numeric | | |
-action_result.summary.next_page_token_present | numeric | | |
+action_result.parameter.wait_timeout_seconds | numeric | | |
+action_result.data.\*.target_type | string | | |
+action_result.data.\*.target_value | string | | |
+action_result.data.\*.job.job_id | string | | |
+action_result.data.\*.job.state | string | | |
+action_result.data.\*.job.at_time | string | | |
+action_result.data.\*.job.create_time | string | | |
+action_result.data.\*.job.update_time | string | | |
+action_result.data.\*.job.delete_time | string | | |
+action_result.data.\*.job.result_count | numeric | | |
+action_result.data.\*.job_results.results.\*.count | numeric | | |
+action_result.data.\*.job_results.results.\*.field_value_pairs.\*.field | string | | |
+action_result.data.\*.job_results.results.\*.field_value_pairs.\*.value | string | | |
+action_result.data.\*.ui_url | string | | |
+action_result.data.\*.poll_count | numeric | | |
+action_result.data.\*.duration_seconds | numeric | | |
+action_result.summary.target_type | string | | |
+action_result.summary.target_value | string | | |
+action_result.summary.job_id | string | | |
+action_result.summary.state | string | | |
+action_result.summary.result_count | numeric | | |
+action_result.summary.returned_results | numeric | | |
+action_result.summary.poll_count | numeric | | |
+action_result.summary.duration_seconds | numeric | | |
 action_result.message | string | | |
 summary.total_objects | numeric | | |
 summary.total_objects_successful | numeric | | |

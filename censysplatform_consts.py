@@ -25,8 +25,7 @@ ACTION_ID_LOOKUP_WEB_PROPERTY = "lookup_web_property"
 ACTION_ID_SEARCH = "search"
 ACTION_ID_GET_HOST_EVENT_HISTORY = "get_host_event_history"
 ACTION_ID_GET_HOST_SERVICE_HISTORY = "get_host_service_history"
-ACTION_ID_FIND_RELATED_ASSETS_FROM_HOST = "find_related_assets_from_host"
-ACTION_ID_FIND_RELATED_ASSETS_FROM_WEB = "find_related_assets_from_web"
+ACTION_ID_FIND_RELATED_INFRASTRUCTURE = "find_related_infrastructure"
 ACTION_ID_LIVE_RESCAN = "live_rescan"
 
 # Error messages

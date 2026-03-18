@@ -1,0 +1,92 @@
+<!--
+ Copyright (c) 2026 Splunk Inc.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+{% extends 'widgets/widget_template.html' %}
+{% load custom_template %}
+{% block custom_title_prop %}
+  {% if title_logo %}
+    style="background-size: auto 60%; background-position: 50%; background-repeat: no-repeat; background-image: url('/app_resource/{{ title_logo }}');"
+  {% endif %}
+{% endblock %}
+{% block title1 %}{{ title1 }}{% endblock %}
+{% block title2 %}{{ title2 }}{% endblock %}
+{% block custom_tools %}{% endblock %}
+{% block widget_content %}
+  <style>
+  .censys-table {
+    width: 100%;
+  }
+  .censys-table th,
+  .censys-table td {
+    padding: 8px 12px !important;
+    vertical-align: top;
+    word-break: break-word;
+  }
+  .censys-table th {
+    text-align: left;
+    white-space: nowrap;
+  }
+  .censys-note {
+    margin-top: 8px;
+    margin-bottom: 14px;
+    color: #8e99a6;
+  }
+  .censys-multiline div {
+    margin-bottom: 4px;
+  }
+  .censys-multiline div:last-child {
+    margin-bottom: 0;
+  }
+  </style>
+  {% for result in results %}
+    <h4>
+      Discover Pivots
+      {% if result.result_count %}{{ result.result_count }}{% endif %}
+    </h4>
+    {% if result.results_truncated %}
+      <div class="censys-note">
+        Displaying first {{ result.displayed_results }} of {{ result.returned_results }} returned pivot rows.
+      </div>
+    {% endif %}
+    {% if result.result_rows %}
+      <table class="wf-table-horizontal datatable censys-table">
+        <thead>
+          <tr>
+            <th>Count</th>
+            <th>Fields</th>
+            <th>Values</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.result_rows %}
+            <tr>
+              <td>{{ row.count }}</td>
+              <td class="censys-multiline">
+                {% for field_name in row.field_rows %}<div>{{ field_name }}</div>{% endfor %}
+              </td>
+              <td class="censys-multiline">
+                {% for field_value in row.value_rows %}<div>{{ field_value }}</div>{% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      No pivot rows were returned for this job.
+    {% endif %}
+  {% empty %}
+    No related infrastructure results parsed for this action run.
+  {% endfor %}
+{% endblock %}

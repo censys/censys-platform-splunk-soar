@@ -15,11 +15,14 @@
 
 import datetime
 import ipaddress
+import json
 import re
 import time
 import uuid
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote_plus, urlencode
+from urllib.request import Request, urlopen
 
 import phantom.app as phantom
 from censys_platform import SDK, models
@@ -27,8 +30,7 @@ from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 
 from censysplatform_consts import (
-    ACTION_ID_FIND_RELATED_ASSETS_FROM_HOST,
-    ACTION_ID_FIND_RELATED_ASSETS_FROM_WEB,
+    ACTION_ID_FIND_RELATED_INFRASTRUCTURE,
     ACTION_ID_GET_HOST_EVENT_HISTORY,
     ACTION_ID_GET_HOST_SERVICE_HISTORY,
     ACTION_ID_LIVE_RESCAN,
@@ -217,99 +219,155 @@ class CensysplatformConnector(BaseConnector):
                 return str(task.get("status"))
         return "unknown"
 
-    def _quote_cenql(self, value: str) -> str:
-        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
-
-    def _or_equals(self, field_name: str, values: list[Any], *, numeric: bool = False) -> str:
-        terms: list[str] = []
-        for value in values:
-            if value is None:
-                continue
-            if numeric:
-                terms.append(f"{field_name}={int(value)}")
-            else:
-                string_value = str(value).strip()
-                if not string_value:
-                    continue
-                terms.append(f"{field_name}={self._quote_cenql(string_value)}")
-        return " OR ".join(terms)
-
-    def _build_related_assets_query_from_host(self, host_data: dict[str, Any], seed_ip: str) -> str:
-        dns = host_data.get("dns") if isinstance(host_data.get("dns"), dict) else {}
-        dns_names = dns.get("names") if isinstance(dns, dict) else []
-
-        hostname_terms = [host_data.get("ip") or seed_ip]
-        if isinstance(dns_names, list):
-            hostname_terms.extend(dns_names)
-        hostname_terms = self._unique_strings(hostname_terms)
-
-        service_ports: list[int] = []
-        services = self._extract_dict_list(host_data.get("services"))
-        for service in services:
-            port = service.get("port")
-            try:
-                port_value = int(port)
-            except (TypeError, ValueError):
-                continue
-            if 1 <= port_value <= 65535 and port_value not in service_ports:
-                service_ports.append(port_value)
-
-        hostname_query = self._or_equals("web.hostname", hostname_terms)
-        web_port_query = self._or_equals("web.port", service_ports, numeric=True)
-        endpoint_port_query = self._or_equals("port", service_ports, numeric=True)
-        ip_value = str(host_data.get("ip") or seed_ip)
-
-        combined_parts: list[str] = []
-        if hostname_query and web_port_query:
-            combined_parts.append(f"(({hostname_query}) AND ({web_port_query}))")
-        elif hostname_query:
-            combined_parts.append(f"({hostname_query})")
-
-        if ip_value and endpoint_port_query:
-            combined_parts.append(f"web.endpoints:(ip={self._quote_cenql(ip_value)} AND ({endpoint_port_query}))")
-
-        return " OR ".join(combined_parts)
-
-    def _build_related_assets_query_from_web(
+    def _http_json_request(
         self,
-        web_data: dict[str, Any],
-        hostname: str,
-        port: int,
-    ) -> str:
-        hostnames = self._unique_strings([hostname, web_data.get("hostname")])
-        endpoint_ips: list[str] = []
-        endpoint_hostnames: list[str] = []
+        method: str,
+        path: str,
+        *,
+        query_params: dict[str, Any] | None = None,
+        body: dict[str, Any] | None = None,
+        timeout: int = 60,
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        params = {"organization_id": self._organization_id}
+        if isinstance(query_params, dict):
+            for key, value in query_params.items():
+                if value is not None and value != "":
+                    params[key] = value
 
-        for endpoint in self._extract_dict_list(web_data.get("endpoints")):
-            endpoint_ip = endpoint.get("ip")
-            if endpoint_ip is not None:
-                endpoint_ips.append(str(endpoint_ip))
-            endpoint_hostname = endpoint.get("hostname")
-            if endpoint_hostname is not None:
-                endpoint_hostnames.append(str(endpoint_hostname))
+        url = f"{self._base_url}{path}"
+        if params:
+            url = f"{url}?{urlencode(params)}"
 
-        cert = web_data.get("cert") if isinstance(web_data.get("cert"), dict) else {}
-        parsed = cert.get("parsed") if isinstance(cert.get("parsed"), dict) else {}
-        subject = parsed.get("subject") if isinstance(parsed.get("subject"), dict) else {}
-        common_names = subject.get("common_name") if isinstance(subject.get("common_name"), list) else []
-        hostnames.extend(endpoint_hostnames)
-        hostnames.extend(common_names if isinstance(common_names, list) else [])
-        hostnames = self._unique_strings(hostnames)
-        endpoint_ips = self._unique_strings(endpoint_ips)
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self._api_token}",
+        }
+        data = None
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+            data = json.dumps(body).encode("utf-8")
 
-        identity_terms: list[str] = []
-        for ip_value in endpoint_ips:
-            identity_terms.append(f"host.ip={self._quote_cenql(ip_value)}")
-        for host_value in hostnames:
-            quoted = self._quote_cenql(host_value)
-            identity_terms.append(f"host.dns.names={quoted}")
-            identity_terms.append(f"host.dns.reverse_dns.names={quoted}")
+        request = Request(url=url, data=data, headers=headers, method=method.upper())
 
-        port_query = f"host.services.port={port}"
-        if not identity_terms:
-            return port_query
-        return f"{port_query} AND ({' OR '.join(identity_terms)})"
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                raw_body = response.read()
+        except HTTPError as err:
+            error_body = err.read().decode("utf-8", errors="replace")
+            error_detail = error_body.strip()
+            try:
+                parsed_error = json.loads(error_body) if error_body else {}
+                if isinstance(parsed_error, dict):
+                    error_detail = str(parsed_error.get("detail") or parsed_error.get("message") or parsed_error.get("title") or error_detail)
+            except json.JSONDecodeError:
+                pass
+            return None, f"HTTP {err.code} calling '{path}': {error_detail or err.reason}"
+        except URLError as err:
+            return None, f"Failed to connect to Censys Platform for '{path}': {err.reason}"
+        except Exception as err:
+            return None, f"Failed to call Censys Platform for '{path}': {err!s}"
+
+        if not raw_body:
+            return {}, None
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8"))
+        except json.JSONDecodeError as err:
+            return None, f"Received a non-JSON response from '{path}': {err!s}"
+
+        if not isinstance(payload, dict):
+            return None, f"Received an unexpected response shape from '{path}'"
+        return payload, None
+
+    def _build_censeye_target(
+        self,
+        param: dict[str, Any],
+    ) -> tuple[str | None, str | None, dict[str, Any] | None, str | None]:
+        host_id = (param.get("host_id", "") or "").strip()
+        webproperty_id = (param.get("webproperty_id", "") or "").strip()
+        certificate_id = (param.get("certificate_id", "") or "").strip().lower()
+
+        provided_targets = [
+            (name, value)
+            for name, value in (
+                ("host_id", host_id),
+                ("webproperty_id", webproperty_id),
+                ("certificate_id", certificate_id),
+            )
+            if value
+        ]
+
+        if len(provided_targets) != 1:
+            return (
+                None,
+                None,
+                None,
+                "Provide exactly one target: 'host_id', 'webproperty_id', or 'certificate_id'",
+            )
+
+        target_type, target_value = provided_targets[0]
+        if target_type == "host_id":
+            try:
+                ipaddress.ip_address(target_value)
+            except ValueError:
+                return None, None, None, "Please provide a valid IPv4 or IPv6 value in 'host_id'"
+        elif target_type == "webproperty_id":
+            if ":" not in target_value:
+                return None, None, None, "'webproperty_id' must be in '<hostname>:<port>' format"
+        elif target_type == "certificate_id":
+            if not re.fullmatch(r"[A-Fa-f0-9]{64}", target_value):
+                return None, None, None, "'certificate_id' must be a 64-character SHA256 hex fingerprint"
+
+        return target_type, target_value, {"target": {target_type: target_value}}, None
+
+    def _extract_result_dict(self, payload: dict[str, Any], path: str) -> tuple[dict[str, Any] | None, str | None]:
+        result = payload.get("result")
+        if not isinstance(result, dict):
+            return None, f"Response from '{path}' did not include an object in 'result'"
+        return result, None
+
+    def _create_censeye_job(self, request_body: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
+        payload, error = self._http_json_request(
+            "POST",
+            "/v3/threat-hunting/censeye/jobs",
+            body=request_body,
+        )
+        if error is not None or payload is None:
+            return None, error
+        return self._extract_result_dict(payload, "/v3/threat-hunting/censeye/jobs")
+
+    def _get_censeye_job(self, job_id: str) -> tuple[dict[str, Any] | None, str | None]:
+        payload, error = self._http_json_request(
+            "GET",
+            f"/v3/threat-hunting/censeye/jobs/{job_id}",
+        )
+        if error is not None or payload is None:
+            return None, error
+        return self._extract_result_dict(payload, f"/v3/threat-hunting/censeye/jobs/{job_id}")
+
+    def _get_censeye_job_results(
+        self,
+        job_id: str,
+        *,
+        page_size: int,
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        payload, error = self._http_json_request(
+            "GET",
+            f"/v3/threat-hunting/censeye/jobs/{job_id}/results",
+            query_params={"page_size": page_size},
+        )
+        if error is not None or payload is None:
+            return None, error
+        return self._extract_result_dict(payload, f"/v3/threat-hunting/censeye/jobs/{job_id}/results")
+
+    def _build_censeye_ui_url(self, target_type: str, target_value: str, job_id: str) -> str:
+        if target_type == "host_id":
+            path = f"/hosts/{target_value}/pivots"
+        elif target_type == "webproperty_id":
+            path = f"/web/{target_value}/pivots"
+        else:
+            path = f"/certificates/{target_value}/pivots"
+        return f"{CENSYSPLATFORM_DEFAULT_UI_URL}{path}?org={quote_plus(self._organization_id)}&jobId={quote_plus(job_id)}"
 
     def _build_rescan_body(
         self,
@@ -989,16 +1047,14 @@ class CensysplatformConnector(BaseConnector):
             f"Retrieved {len(ranges)} host service history range(s) for '{host_id}'",
         )
 
-    def _handle_find_related_assets_from_host(self, param: dict[str, Any]) -> int:
+    def _handle_find_related_infrastructure(self, param: dict[str, Any]) -> int:
         action_result = self.add_action_result(ActionResult(dict(param)))
-        host_id = (param.get("host_id", "") or "").strip()
-        at_time_raw = (param.get("at_time", "") or "").strip()
-        page_token = (param.get("page_token", "") or "").strip()
 
-        try:
-            ipaddress.ip_address(host_id)
-        except ValueError:
-            return action_result.set_status(phantom.APP_ERROR, "Please provide a valid IPv4 or IPv6 value in 'host_id'")
+        target_type, target_value, request_body, target_error = self._build_censeye_target(param)
+        if target_error is not None:
+            return action_result.set_status(phantom.APP_ERROR, target_error)
+        if target_type is None or target_value is None or request_body is None:
+            return action_result.set_status(phantom.APP_ERROR, "Unable to build the CensEye job request")
 
         page_size, page_size_error = self._coerce_int_param(param.get("page_size", 100), "page_size")
         if page_size_error is not None:
@@ -1006,193 +1062,142 @@ class CensysplatformConnector(BaseConnector):
         if page_size is None or page_size < 1:
             return action_result.set_status(phantom.APP_ERROR, "'page_size' must be greater than 0")
 
-        at_time, at_time_error = self._parse_iso8601_param(at_time_raw, "at_time")
-        if at_time_error is not None:
-            return action_result.set_status(phantom.APP_ERROR, at_time_error)
+        wait_timeout_seconds, wait_timeout_error = self._coerce_int_param(
+            param.get("wait_timeout_seconds", 300),
+            "wait_timeout_seconds",
+        )
+        if wait_timeout_error is not None:
+            return action_result.set_status(phantom.APP_ERROR, wait_timeout_error)
+        if wait_timeout_seconds is None or wait_timeout_seconds < 1:
+            return action_result.set_status(phantom.APP_ERROR, "'wait_timeout_seconds' must be greater than 0")
 
-        try:
-            with self._create_sdk() as sdk:
-                host_response = sdk.global_data.get_host(
-                    host_id=host_id,
-                    at_time=at_time,
-                    organization_id=self._organization_id,
+        self.save_progress(f"Creating CensEye pivot job for {target_type} '{target_value}'...")
+        initial_job, create_error = self._create_censeye_job(request_body)
+        if create_error is not None:
+            return action_result.set_status(phantom.APP_ERROR, f"Failed to create CensEye job: {create_error}")
+        if initial_job is None:
+            return action_result.set_status(phantom.APP_ERROR, "CensEye job creation returned no result")
+
+        job_id = str(initial_job.get("job_id") or "")
+        if not job_id:
+            return action_result.set_status(phantom.APP_ERROR, "CensEye job creation did not return 'job_id'")
+
+        poll_count = 0
+        poll_interval = 3
+        max_poll_interval = 15
+        poll_start = time.monotonic()
+        latest_job = initial_job
+        terminal_states = {"completed", "failed", "error", "cancelled", "canceled", "deleted", "expired"}
+        latest_state = str(latest_job.get("state") or "unknown").lower()
+
+        while latest_state not in terminal_states:
+            elapsed = time.monotonic() - poll_start
+            if elapsed >= wait_timeout_seconds:
+                ui_url = self._build_censeye_ui_url(target_type, target_value, job_id)
+                action_result.add_data(
+                    {
+                        "target_type": target_type,
+                        "target_value": target_value,
+                        "job": latest_job,
+                        "ui_url": ui_url,
+                        "poll_count": poll_count,
+                        "duration_seconds": round(elapsed, 2),
+                    }
                 )
-                host = host_response.result.result.resource
-        except models.SDKBaseError as err:
-            return action_result.set_status(
-                phantom.APP_ERROR,
-                f"Failed to retrieve host seed for related assets (status code: {err.status_code})",
-            )
-        except Exception as err:
-            return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve host seed for related assets: {err!s}")
-
-        host_data = self._serialize(host)
-        if not isinstance(host_data, dict):
-            return action_result.set_status(phantom.APP_ERROR, "Unexpected host seed response shape for related-assets query generation")
-
-        generated_query = self._build_related_assets_query_from_host(host_data, host_id)
-        if not generated_query:
-            return action_result.set_status(
-                phantom.APP_ERROR,
-                "Unable to generate a related-assets query from the selected host",
-            )
-
-        try:
-            with self._create_sdk() as sdk:
-                search_response = sdk.global_data.search(
-                    search_query_input_body=models.SearchQueryInputBody(
-                        query=generated_query,
-                        page_size=page_size,
-                        page_token=page_token or None,
-                    ),
-                    organization_id=self._organization_id,
+                action_result.update_summary(
+                    {
+                        "target_type": target_type,
+                        "target_value": target_value,
+                        "job_id": job_id,
+                        "state": latest_state,
+                        "poll_count": poll_count,
+                        "duration_seconds": round(elapsed, 2),
+                    }
                 )
-                search_result = search_response.result.result
-        except models.SDKBaseError as err:
+                return action_result.set_status(
+                    phantom.APP_ERROR,
+                    f"CensEye job '{job_id}' did not complete within {wait_timeout_seconds} second(s)",
+                )
+
+            time.sleep(poll_interval)
+            poll_count += 1
+            self.save_progress(f"Polling CensEye job '{job_id}' (attempt {poll_count})...")
+
+            latest_job_response, status_error = self._get_censeye_job(job_id)
+            if status_error is not None:
+                return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve CensEye job status: {status_error}")
+            if latest_job_response is None:
+                return action_result.set_status(phantom.APP_ERROR, "CensEye job status response returned no result")
+
+            latest_job = latest_job_response
+            latest_state = str(latest_job.get("state") or "unknown").lower()
+            poll_interval = min(poll_interval + 1, max_poll_interval)
+
+        duration_seconds = round(time.monotonic() - poll_start, 2)
+        ui_url = self._build_censeye_ui_url(target_type, target_value, job_id)
+
+        if latest_state != "completed":
+            action_result.add_data(
+                {
+                    "target_type": target_type,
+                    "target_value": target_value,
+                    "job": latest_job,
+                    "ui_url": ui_url,
+                    "poll_count": poll_count,
+                    "duration_seconds": duration_seconds,
+                }
+            )
+            action_result.update_summary(
+                {
+                    "target_type": target_type,
+                    "target_value": target_value,
+                    "job_id": job_id,
+                    "state": latest_state,
+                    "poll_count": poll_count,
+                    "duration_seconds": duration_seconds,
+                }
+            )
             return action_result.set_status(
                 phantom.APP_ERROR,
-                f"Failed to search related assets from host seed (status code: {err.status_code})",
+                f"CensEye job '{job_id}' ended in state '{latest_state}'",
             )
-        except Exception as err:
-            return action_result.set_status(phantom.APP_ERROR, f"Failed to search related assets from host seed: {err!s}")
 
-        search_result_data = self._serialize(search_result)
-        if not isinstance(search_result_data, dict):
-            search_result_data = {"result": search_result_data}
+        job_results, results_error = self._get_censeye_job_results(job_id, page_size=page_size)
+        if results_error is not None:
+            return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve CensEye job results: {results_error}")
+        if job_results is None:
+            return action_result.set_status(phantom.APP_ERROR, "CensEye job results response returned no result")
 
-        hits = search_result_data.get("hits")
-        if not isinstance(hits, list):
-            hits = []
-        next_page_token = search_result_data.get("next_page_token", "")
-        if not isinstance(next_page_token, str):
-            next_page_token = ""
+        result_rows = job_results.get("results")
+        if not isinstance(result_rows, list):
+            result_rows = []
 
         action_result.add_data(
             {
-                "seed_host": host_data,
-                "generated_query": generated_query,
-                "search_result": search_result_data,
+                "target_type": target_type,
+                "target_value": target_value,
+                "job": latest_job,
+                "job_results": job_results,
+                "ui_url": ui_url,
+                "poll_count": poll_count,
+                "duration_seconds": duration_seconds,
             }
         )
         action_result.update_summary(
             {
-                "seed_host": host_id,
-                "generated_query": generated_query,
-                "total_hits": int(search_result_data.get("total_hits") or 0),
-                "returned_hits": len(hits),
-                "next_page_token_present": int(bool(next_page_token)),
+                "target_type": target_type,
+                "target_value": target_value,
+                "job_id": job_id,
+                "state": latest_state,
+                "result_count": int(latest_job.get("result_count") or len(result_rows)),
+                "returned_results": len(result_rows),
+                "poll_count": poll_count,
+                "duration_seconds": duration_seconds,
             }
         )
         return action_result.set_status(
             phantom.APP_SUCCESS,
-            f"Related-assets search from host '{host_id}' returned {len(hits)} hit(s)",
-        )
-
-    def _handle_find_related_assets_from_web(self, param: dict[str, Any]) -> int:
-        action_result = self.add_action_result(ActionResult(dict(param)))
-        hostname = (param.get("hostname", "") or "").strip()
-        at_time_raw = (param.get("at_time", "") or "").strip()
-        page_token = (param.get("page_token", "") or "").strip()
-
-        if not self._validate_hostname(hostname):
-            return action_result.set_status(
-                phantom.APP_ERROR,
-                "Please provide a valid domain or IP value in 'hostname'",
-            )
-
-        port, port_error = self._coerce_int_param(param.get("port"), "port")
-        if port_error is not None:
-            return action_result.set_status(phantom.APP_ERROR, port_error)
-        if port is None or not 1 <= port <= 65535:
-            return action_result.set_status(phantom.APP_ERROR, "'port' must be between 1 and 65535")
-
-        page_size, page_size_error = self._coerce_int_param(param.get("page_size", 100), "page_size")
-        if page_size_error is not None:
-            return action_result.set_status(phantom.APP_ERROR, page_size_error)
-        if page_size is None or page_size < 1:
-            return action_result.set_status(phantom.APP_ERROR, "'page_size' must be greater than 0")
-
-        at_time, at_time_error = self._parse_iso8601_param(at_time_raw, "at_time")
-        if at_time_error is not None:
-            return action_result.set_status(phantom.APP_ERROR, at_time_error)
-
-        web_property_id = f"{hostname}:{port}"
-        try:
-            with self._create_sdk() as sdk:
-                web_response = sdk.global_data.get_web_property(
-                    webproperty_id=web_property_id,
-                    at_time=at_time,
-                    organization_id=self._organization_id,
-                )
-                web_property = web_response.result.result.resource
-        except models.SDKBaseError as err:
-            return action_result.set_status(
-                phantom.APP_ERROR,
-                f"Failed to retrieve web property seed for related assets (status code: {err.status_code})",
-            )
-        except Exception as err:
-            return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve web property seed for related assets: {err!s}")
-
-        web_data = self._serialize(web_property)
-        if not isinstance(web_data, dict):
-            return action_result.set_status(phantom.APP_ERROR, "Unexpected web property seed response shape for related-assets query generation")
-
-        generated_query = self._build_related_assets_query_from_web(web_data, hostname, port)
-        if not generated_query:
-            return action_result.set_status(
-                phantom.APP_ERROR,
-                "Unable to generate a related-assets query from the selected web property",
-            )
-
-        try:
-            with self._create_sdk() as sdk:
-                search_response = sdk.global_data.search(
-                    search_query_input_body=models.SearchQueryInputBody(
-                        query=generated_query,
-                        page_size=page_size,
-                        page_token=page_token or None,
-                    ),
-                    organization_id=self._organization_id,
-                )
-                search_result = search_response.result.result
-        except models.SDKBaseError as err:
-            return action_result.set_status(
-                phantom.APP_ERROR,
-                f"Failed to search related assets from web property seed (status code: {err.status_code})",
-            )
-        except Exception as err:
-            return action_result.set_status(phantom.APP_ERROR, f"Failed to search related assets from web property seed: {err!s}")
-
-        search_result_data = self._serialize(search_result)
-        if not isinstance(search_result_data, dict):
-            search_result_data = {"result": search_result_data}
-
-        hits = search_result_data.get("hits")
-        if not isinstance(hits, list):
-            hits = []
-        next_page_token = search_result_data.get("next_page_token", "")
-        if not isinstance(next_page_token, str):
-            next_page_token = ""
-
-        action_result.add_data(
-            {
-                "seed_web_property": web_data,
-                "generated_query": generated_query,
-                "search_result": search_result_data,
-            }
-        )
-        action_result.update_summary(
-            {
-                "seed_web_property": web_property_id,
-                "generated_query": generated_query,
-                "total_hits": int(search_result_data.get("total_hits") or 0),
-                "returned_hits": len(hits),
-                "next_page_token_present": int(bool(next_page_token)),
-            }
-        )
-        return action_result.set_status(
-            phantom.APP_SUCCESS,
-            f"Related-assets search from web property '{web_property_id}' returned {len(hits)} hit(s)",
+            f"CensEye job '{job_id}' completed with {len(result_rows)} related infrastructure pivot(s)",
         )
 
     def _handle_live_rescan(self, param: dict[str, Any]) -> int:
@@ -1409,8 +1414,7 @@ class CensysplatformConnector(BaseConnector):
             ACTION_ID_SEARCH: self._handle_search,
             ACTION_ID_GET_HOST_EVENT_HISTORY: self._handle_get_host_event_history,
             ACTION_ID_GET_HOST_SERVICE_HISTORY: self._handle_get_host_service_history,
-            ACTION_ID_FIND_RELATED_ASSETS_FROM_HOST: self._handle_find_related_assets_from_host,
-            ACTION_ID_FIND_RELATED_ASSETS_FROM_WEB: self._handle_find_related_assets_from_web,
+            ACTION_ID_FIND_RELATED_INFRASTRUCTURE: self._handle_find_related_infrastructure,
             ACTION_ID_LIVE_RESCAN: self._handle_live_rescan,
         }
 

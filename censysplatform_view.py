@@ -374,70 +374,34 @@ def _get_result_param(result: Any, key: str) -> Any:
     return None
 
 
-def _summarize_asset_hit(hit: Any) -> dict[str, Any] | None:
-    if not isinstance(hit, dict):
-        return None
-
-    host_resource = _as_dict(_safe_get(hit, "host_v1.resource", {}))
-    if host_resource:
-        host_ip = host_resource.get("ip")
-        host_dns = _truncate_list(_normalize_display_list(_safe_get(host_resource, "dns.names", []), ("name", "value")), 3)
-        host_labels = _truncate_list(_normalize_display_list(host_resource.get("labels"), ("value", "name", "label")), 3)
-        location = _as_dict(host_resource.get("location"))
-        location_summary = ", ".join(str(part) for part in (location.get("city"), location.get("country")) if part)
-        return {
-            "asset_type": "host",
-            "identifier": host_ip,
-            "context": ", ".join(host_dns) if host_dns else (location_summary or "N/A"),
-            "tags": ", ".join(host_labels) if host_labels else "N/A",
-        }
-
-    web_resource = _as_dict(_safe_get(hit, "webproperty_v1.resource", {}))
-    if web_resource:
-        hostname = web_resource.get("hostname")
-        port = web_resource.get("port")
-        identifier = f"{hostname}:{port}" if hostname and port not in (None, "") else hostname
-        web_labels = _truncate_list(_normalize_display_list(web_resource.get("labels"), ("value", "name", "label")), 3)
-        scan_time = web_resource.get("scan_time")
-        return {
-            "asset_type": "web_property",
-            "identifier": identifier,
-            "context": scan_time or "N/A",
-            "tags": ", ".join(web_labels) if web_labels else "N/A",
-        }
-
-    cert_resource = _as_dict(_safe_get(hit, "certificate_v1.resource", {}))
-    if cert_resource:
-        parsed = _as_dict(cert_resource.get("parsed"))
-        common_names = _truncate_list(_normalize_display_list(_safe_get(parsed, "subject.common_name", []), ("name", "value")), 3)
-        return {
-            "asset_type": "certificate",
-            "identifier": cert_resource.get("fingerprint_sha256"),
-            "context": ", ".join(common_names) if common_names else "N/A",
-            "tags": parsed.get("issuer_dn") or "N/A",
-        }
-
-    unknown_keys = [str(key) for key in hit.keys()]
-    if not unknown_keys:
-        return None
-    return {
-        "asset_type": "unknown",
-        "identifier": unknown_keys[0],
-        "context": "See JSON view for full structure",
-        "tags": "N/A",
-    }
-
-
-def _extract_asset_rows(search_payload: dict[str, Any], limit: int = 100) -> tuple[list[dict[str, Any]], bool]:
+def _extract_censeye_result_rows(job_results: dict[str, Any], limit: int = 100) -> tuple[list[dict[str, Any]], bool]:
     rows: list[dict[str, Any]] = []
-    raw_hits = _ensure_list(search_payload.get("hits"))
-    truncated = len(raw_hits) > limit
+    raw_results = _ensure_list(job_results.get("results"))
+    truncated = len(raw_results) > limit
 
-    for hit in raw_hits[:limit]:
-        row = _summarize_asset_hit(hit)
-        if row is None:
+    for item in raw_results[:limit]:
+        if not isinstance(item, dict):
             continue
-        rows.append(row)
+
+        field_rows = []
+        value_rows = []
+        for pair in _ensure_list(item.get("field_value_pairs")):
+            if not isinstance(pair, dict):
+                continue
+            field_name = pair.get("field")
+            field_value = pair.get("value")
+            if field_name in (None, "") and field_value in (None, ""):
+                continue
+            field_rows.append(field_name)
+            value_rows.append(field_value)
+
+        rows.append(
+            {
+                "count": item.get("count"),
+                "field_rows": field_rows or ["N/A"],
+                "value_rows": value_rows or ["N/A"],
+            }
+        )
 
     return rows, truncated
 
@@ -755,7 +719,7 @@ def display_host_service_history(provides, all_app_runs, context):
     return "views/host_service_history.html"
 
 
-def display_related_assets_from_host(provides, all_app_runs, context):
+def display_related_infrastructure(provides, all_app_runs, context):
     _ = provides
     context["results"] = results = []
 
@@ -764,60 +728,19 @@ def display_related_assets_from_host(provides, all_app_runs, context):
         if not isinstance(d, dict):
             continue
         try:
-            seed_host = _as_dict(d.get("seed_host"))
-            search_result = _as_dict(d.get("search_result"))
-            rows, rows_truncated = _extract_asset_rows(search_result)
-
-            seed_dns_names = _truncate_list(_normalize_display_list(_safe_get(seed_host, "dns.names", []), ("name", "value")), 5)
+            job = _as_dict(d.get("job"))
+            job_results = _as_dict(d.get("job_results"))
+            rows, rows_truncated = _extract_censeye_result_rows(job_results)
             results.append(
                 {
-                    "seed_type": "host",
-                    "seed_value": seed_host.get("ip"),
-                    "seed_details": ", ".join(seed_dns_names) if seed_dns_names else "N/A",
-                    "generated_query": d.get("generated_query"),
-                    "total_hits": _safe_int(search_result.get("total_hits")),
-                    "returned_hits": len(_ensure_list(search_result.get("hits"))),
-                    "displayed_hits": len(rows),
-                    "hits_truncated": rows_truncated,
-                    "next_page_token": search_result.get("next_page_token"),
-                    "asset_rows": rows,
+                    "result_count": _safe_int(job.get("result_count")),
+                    "returned_results": len(_ensure_list(job_results.get("results"))),
+                    "displayed_results": len(rows),
+                    "results_truncated": rows_truncated,
+                    "result_rows": rows,
                 }
             )
         except Exception:
             continue
 
-    return "views/related_assets.html"
-
-
-def display_related_assets_from_web(provides, all_app_runs, context):
-    _ = provides
-    context["results"] = results = []
-
-    for result in _iter_action_results(all_app_runs):
-        d = _first_data_dict(result)
-        if not isinstance(d, dict):
-            continue
-        try:
-            seed_web = _as_dict(d.get("seed_web_property"))
-            search_result = _as_dict(d.get("search_result"))
-            rows, rows_truncated = _extract_asset_rows(search_result)
-
-            seed_identifier = f"{seed_web.get('hostname')}:{seed_web.get('port')}"
-            results.append(
-                {
-                    "seed_type": "web_property",
-                    "seed_value": seed_identifier,
-                    "seed_details": seed_web.get("scan_time") or "N/A",
-                    "generated_query": d.get("generated_query"),
-                    "total_hits": _safe_int(search_result.get("total_hits")),
-                    "returned_hits": len(_ensure_list(search_result.get("hits"))),
-                    "displayed_hits": len(rows),
-                    "hits_truncated": rows_truncated,
-                    "next_page_token": search_result.get("next_page_token"),
-                    "asset_rows": rows,
-                }
-            )
-        except Exception:
-            continue
-
-    return "views/related_assets.html"
+    return "views/related_infrastructure.html"
