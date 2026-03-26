@@ -1100,11 +1100,11 @@
             },
             {
                 "module": "anyio",
-                "input_file": "wheels/py3/anyio-4.12.1-py3-none-any.whl"
+                "input_file": "wheels/py3/anyio-4.13.0-py3-none-any.whl"
             },
             {
                 "module": "censys_platform",
-                "input_file": "wheels/py3/censys_platform-0.13.1-py3-none-any.whl"
+                "input_file": "wheels/py3/censys_platform-0.13.2-py3-none-any.whl"
             },
             {
                 "module": "h11",
@@ -1125,54 +1125,6 @@
             {
                 "module": "pydantic_core",
                 "input_file": "wheels/py313/pydantic_core-2.41.5-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
-            },
-            {
-                "module": "typing_extensions",
-                "input_file": "wheels/py3/typing_extensions-4.15.0-py3-none-any.whl"
-            },
-            {
-                "module": "typing_inspection",
-                "input_file": "wheels/py3/typing_inspection-0.4.2-py3-none-any.whl"
-            }
-        ]
-    },
-    "pip39_dependencies": {
-        "wheel": [
-            {
-                "module": "annotated_types",
-                "input_file": "wheels/py3/annotated_types-0.7.0-py3-none-any.whl"
-            },
-            {
-                "module": "anyio",
-                "input_file": "wheels/py3/anyio-4.12.1-py3-none-any.whl"
-            },
-            {
-                "module": "censys_platform",
-                "input_file": "wheels/py3/censys_platform-0.12.1-py3-none-any.whl"
-            },
-            {
-                "module": "exceptiongroup",
-                "input_file": "wheels/py3/exceptiongroup-1.3.1-py3-none-any.whl"
-            },
-            {
-                "module": "h11",
-                "input_file": "wheels/py3/h11-0.16.0-py3-none-any.whl"
-            },
-            {
-                "module": "httpcore",
-                "input_file": "wheels/py3/httpcore-1.0.9-py3-none-any.whl"
-            },
-            {
-                "module": "httpx",
-                "input_file": "wheels/py3/httpx-0.28.1-py3-none-any.whl"
-            },
-            {
-                "module": "pydantic",
-                "input_file": "wheels/py3/pydantic-2.12.5-py3-none-any.whl"
-            },
-            {
-                "module": "pydantic_core",
-                "input_file": "wheels/py39/pydantic_core-2.41.5-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
             },
             {
                 "module": "typing_extensions",

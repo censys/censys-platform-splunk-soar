@@ -15,7 +15,6 @@
 
 import datetime
 import ipaddress
-import json
 import re
 import time
 import uuid
@@ -219,70 +218,6 @@ class CensysplatformConnector(BaseConnector):
                 return str(task.get("status"))
         return "unknown"
 
-    def _http_json_request(
-        self,
-        method: str,
-        path: str,
-        *,
-        query_params: dict[str, Any] | None = None,
-        body: dict[str, Any] | None = None,
-        timeout: int = 60,
-    ) -> tuple[dict[str, Any] | None, str | None]:
-        params = {"organization_id": self._organization_id}
-        if isinstance(query_params, dict):
-            for key, value in query_params.items():
-                if value is not None and value != "":
-                    params[key] = value
-
-        try:
-            with self._create_sdk() as sdk:
-                client = sdk.sdk_configuration.client
-                if client is None:
-                    return None, "Censys SDK client is not initialized"
-
-                headers = {
-                    "Accept": "application/json",
-                    "Authorization": f"Bearer {self._api_token}",
-                    "User-Agent": sdk.sdk_configuration.user_agent,
-                }
-                if body is not None:
-                    headers["Content-Type"] = "application/json"
-
-                request = client.build_request(
-                    method.upper(),
-                    f"{self._base_url}{path}",
-                    json=body,
-                    params=params,
-                    headers=headers,
-                    timeout=timeout,
-                )
-                response = client.send(request)
-        except Exception as err:
-            return None, f"Failed to call Censys Platform for '{path}': {err!s}"
-
-        raw_body = response.text
-        if response.status_code >= 400:
-            error_detail = raw_body.strip()
-            try:
-                parsed_error = json.loads(raw_body) if raw_body else {}
-                if isinstance(parsed_error, dict):
-                    error_detail = str(parsed_error.get("detail") or parsed_error.get("message") or parsed_error.get("title") or error_detail)
-            except json.JSONDecodeError:
-                pass
-            return None, f"HTTP {response.status_code} calling '{path}': {error_detail or response.reason_phrase}"
-
-        if not raw_body:
-            return {}, None
-
-        try:
-            payload = json.loads(raw_body)
-        except json.JSONDecodeError as err:
-            return None, f"Received a non-JSON response from '{path}': {err!s}"
-
-        if not isinstance(payload, dict):
-            return None, f"Received an unexpected response shape from '{path}'"
-        return payload, None
-
     def _build_censeye_target(
         self,
         param: dict[str, Any],
@@ -315,30 +250,32 @@ class CensysplatformConnector(BaseConnector):
 
         return target_type, target_value, {"target": {target_type: target_value}}, None
 
-    def _extract_result_dict(self, payload: dict[str, Any], path: str) -> tuple[dict[str, Any] | None, str | None]:
-        result = payload.get("result")
-        if not isinstance(result, dict):
-            return None, f"Response from '{path}' did not include an object in 'result'"
-        return result, None
-
     def _create_censeye_job(self, request_body: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
-        payload, error = self._http_json_request(
-            "POST",
-            "/v3/threat-hunting/censeye/jobs",
-            body=request_body,
-        )
-        if error is not None or payload is None:
-            return None, error
-        return self._extract_result_dict(payload, "/v3/threat-hunting/censeye/jobs")
+        try:
+            with self._create_sdk() as sdk:
+                response = sdk.threat_hunting.create_censeye_job(
+                    create_censeye_job_input_body=request_body,
+                    organization_id=self._organization_id,
+                )
+                return self._serialize(response.result.result), None
+        except models.SDKBaseError as err:
+            return None, f"HTTP {err.status_code} calling '/v3/threat-hunting/censeye/jobs': {err.message or err.body or 'API error occurred'}"
+        except Exception as err:
+            return None, f"Failed to call Censys Platform for '/v3/threat-hunting/censeye/jobs': {err!s}"
 
     def _get_censeye_job(self, job_id: str) -> tuple[dict[str, Any] | None, str | None]:
-        payload, error = self._http_json_request(
-            "GET",
-            f"/v3/threat-hunting/censeye/jobs/{job_id}",
-        )
-        if error is not None or payload is None:
-            return None, error
-        return self._extract_result_dict(payload, f"/v3/threat-hunting/censeye/jobs/{job_id}")
+        path = f"/v3/threat-hunting/censeye/jobs/{job_id}"
+        try:
+            with self._create_sdk() as sdk:
+                response = sdk.threat_hunting.get_censeye_job(
+                    job_id=job_id,
+                    organization_id=self._organization_id,
+                )
+                return self._serialize(response.result.result), None
+        except models.SDKBaseError as err:
+            return None, f"HTTP {err.status_code} calling '{path}': {err.message or err.body or 'API error occurred'}"
+        except Exception as err:
+            return None, f"Failed to call Censys Platform for '{path}': {err!s}"
 
     def _get_censeye_job_results(
         self,
@@ -346,14 +283,19 @@ class CensysplatformConnector(BaseConnector):
         *,
         page_size: int,
     ) -> tuple[dict[str, Any] | None, str | None]:
-        payload, error = self._http_json_request(
-            "GET",
-            f"/v3/threat-hunting/censeye/jobs/{job_id}/results",
-            query_params={"page_size": page_size},
-        )
-        if error is not None or payload is None:
-            return None, error
-        return self._extract_result_dict(payload, f"/v3/threat-hunting/censeye/jobs/{job_id}/results")
+        path = f"/v3/threat-hunting/censeye/jobs/{job_id}/results"
+        try:
+            with self._create_sdk() as sdk:
+                response = sdk.threat_hunting.get_censeye_job_results(
+                    job_id=job_id,
+                    organization_id=self._organization_id,
+                    page_size=page_size,
+                )
+                return self._serialize(response.result.result), None
+        except models.SDKBaseError as err:
+            return None, f"HTTP {err.status_code} calling '{path}': {err.message or err.body or 'API error occurred'}"
+        except Exception as err:
+            return None, f"Failed to call Censys Platform for '{path}': {err!s}"
 
     def _build_censeye_ui_url(self, target_type: str, target_value: str, job_id: str) -> str:
         if target_type == "host_id":
