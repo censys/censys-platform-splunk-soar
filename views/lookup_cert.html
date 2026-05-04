@@ -25,13 +25,17 @@
 {% block custom_tools %}{% endblock %}
 {% block widget_content %}
   <style>
+  .censys-kv {
+    width: 100%;
+  }
   .censys-kv td:first-child {
-    min-width: 190px;
+    min-width: 220px;
+    padding: 8px 12px !important;
     padding-right: 16px !important;
     white-space: nowrap;
   }
   .censys-kv td:last-child {
-    padding-left: 16px !important;
+    padding: 8px 12px !important;
   }
   </style>
   {% for cert in results %}

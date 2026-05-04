@@ -25,13 +25,28 @@
 {% block custom_tools %}{% endblock %}
 {% block widget_content %}
   <style>
+  .censys-kv,
+  .censys-table {
+    width: 100%;
+  }
   .censys-kv td:first-child {
-    min-width: 190px;
+    min-width: 220px;
+    padding: 8px 12px !important;
     padding-right: 16px !important;
     white-space: nowrap;
   }
   .censys-kv td:last-child {
-    padding-left: 16px !important;
+    padding: 8px 12px !important;
+  }
+  .censys-table th,
+  .censys-table td {
+    padding: 8px 12px !important;
+    vertical-align: top;
+    word-break: break-word;
+  }
+  .censys-table th {
+    text-align: left;
+    white-space: nowrap;
   }
   </style>
   {% for result in results %}
@@ -76,7 +91,7 @@
     </table>
     {% if result.software %}
       <h4>Software</h4>
-      <table class="wf-table-horizontal datatable">
+      <table class="wf-table-horizontal datatable censys-table">
         <thead>
           <tr>
             <th>Vendor</th>
@@ -97,7 +112,7 @@
     {% endif %}
     {% if result.endpoints %}
       <h4>Endpoints</h4>
-      <table class="wf-table-horizontal datatable">
+      <table class="wf-table-horizontal datatable censys-table">
         <thead>
           <tr>
             <th>Endpoint Type</th>

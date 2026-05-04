@@ -303,6 +303,18 @@ def _extract_search_host_services(hit: dict[str, Any], host: dict[str, Any]) -> 
     return enriched_services or all_services
 
 
+def _as_dict(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def _truncate_list(values: list[Any], limit: int = 5) -> list[Any]:
+    if limit < 1:
+        return []
+    return values[:limit]
+
+
 def _safe_int(value: Any, default: int = 0) -> int:
     try:
         return int(value)
@@ -360,6 +372,38 @@ def _get_result_param(result: Any, key: str) -> Any:
     if isinstance(params, dict):
         return params.get(key)
     return None
+
+
+def _extract_censeye_result_rows(job_results: dict[str, Any], limit: int = 100) -> tuple[list[dict[str, Any]], bool]:
+    rows: list[dict[str, Any]] = []
+    raw_results = _ensure_list(job_results.get("results"))
+    truncated = len(raw_results) > limit
+
+    for item in raw_results[:limit]:
+        if not isinstance(item, dict):
+            continue
+
+        field_rows = []
+        value_rows = []
+        for pair in _ensure_list(item.get("field_value_pairs")):
+            if not isinstance(pair, dict):
+                continue
+            field_name = pair.get("field")
+            field_value = pair.get("value")
+            if field_name in (None, "") and field_value in (None, ""):
+                continue
+            field_rows.append(field_name)
+            value_rows.append(field_value)
+
+        rows.append(
+            {
+                "count": item.get("count"),
+                "field_rows": field_rows or ["N/A"],
+                "value_rows": value_rows or ["N/A"],
+            }
+        )
+
+    return rows, truncated
 
 
 def display_host(provides, all_app_runs, context):
@@ -488,3 +532,215 @@ def display_search(provides, all_app_runs, context):
             continue
 
     return "views/search_results.html"
+
+
+def display_live_rescan(provides, all_app_runs, context):
+    _ = provides
+    context["results"] = results = []
+
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
+
+        try:
+            initial_scan = d.get("initial_tracked_scan") if isinstance(d.get("initial_tracked_scan"), dict) else {}
+            final_scan = d.get("final_tracked_scan") if isinstance(d.get("final_tracked_scan"), dict) else {}
+            pre_lookup = d.get("pre_lookup") if isinstance(d.get("pre_lookup"), dict) else {}
+            post_lookup = d.get("post_lookup") if isinstance(d.get("post_lookup"), dict) else {}
+            diff_entries = []
+
+            for entry in _ensure_list(d.get("diff_entries")):
+                if not isinstance(entry, dict):
+                    continue
+                diff_entries.append(
+                    {
+                        "change_type": entry.get("change_type"),
+                        "path": entry.get("path"),
+                        "before": entry.get("before"),
+                        "after": entry.get("after"),
+                    }
+                )
+
+            tracked_scan_id = final_scan.get("tracked_scan_id") or initial_scan.get("tracked_scan_id")
+            results.append(
+                {
+                    "tracked_scan_id": tracked_scan_id,
+                    "target_type": d.get("target_type"),
+                    "poll_count": d.get("poll_count"),
+                    "duration_seconds": d.get("duration_seconds"),
+                    "diff_truncated": bool(d.get("diff_truncated")),
+                    "change_count": len(diff_entries),
+                    "pre_lookup_type": pre_lookup.get("lookup_type"),
+                    "post_lookup_type": post_lookup.get("lookup_type"),
+                    "diff_entries": diff_entries,
+                }
+            )
+        except Exception:
+            continue
+
+    return "views/live_rescan.html"
+
+
+def display_host_event_history(provides, all_app_runs, context):
+    _ = provides
+    context["results"] = results = []
+
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
+
+        try:
+            request = _as_dict(d.get("request"))
+            events = _ensure_list(d.get("events"))
+
+            service_scan_count = 0
+            endpoint_scan_count = 0
+            dns_update_count = 0
+            event_rows: list[dict[str, Any]] = []
+
+            for event in events[:100]:
+                if not isinstance(event, dict):
+                    continue
+                resource = _as_dict(event.get("resource"))
+                payload = resource if resource else event
+
+                event_types: list[str] = []
+                details = "N/A"
+
+                service_scanned = _as_dict(payload.get("service_scanned"))
+                if service_scanned:
+                    service_scan_count += 1
+                    event_types.append("service_scanned")
+                    scan = _as_dict(service_scanned.get("scan"))
+                    if scan:
+                        scan_ip = scan.get("ip")
+                        scan_port = scan.get("port")
+                        scan_protocol = scan.get("protocol")
+                        scan_transport = scan.get("transport_protocol")
+                        details = f"{scan_ip}:{scan_port}/{scan_protocol}/{scan_transport}"
+
+                endpoint_scanned = payload.get("endpoint_scanned")
+                if endpoint_scanned:
+                    endpoint_scan_count += 1
+                    event_types.append("endpoint_scanned")
+
+                if payload.get("forward_dns_resolved") or payload.get("reverse_dns_resolved"):
+                    dns_update_count += 1
+                    event_types.append("dns_updated")
+
+                event_rows.append(
+                    {
+                        "event_time": payload.get("event_time"),
+                        "event_type": ", ".join(event_types) if event_types else "other",
+                        "details": details,
+                    }
+                )
+
+            event_times = [str(row.get("event_time")) for row in event_rows if row.get("event_time")]
+            results.append(
+                {
+                    "host_id": request.get("host_id") or d.get("host_id"),
+                    "start_time": request.get("start_time"),
+                    "end_time": request.get("end_time"),
+                    "event_count": len(events),
+                    "displayed_count": len(event_rows),
+                    "events_truncated": len(events) > len(event_rows),
+                    "service_scan_count": service_scan_count,
+                    "endpoint_scan_count": endpoint_scan_count,
+                    "dns_update_count": dns_update_count,
+                    "first_event_time": min(event_times) if event_times else "N/A",
+                    "last_event_time": max(event_times) if event_times else "N/A",
+                    "event_rows": event_rows,
+                }
+            )
+        except Exception:
+            continue
+
+    return "views/host_event_history.html"
+
+
+def display_host_service_history(provides, all_app_runs, context):
+    _ = provides
+    context["results"] = results = []
+
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
+
+        try:
+            request = _as_dict(d.get("request"))
+            ranges = _ensure_list(d.get("ranges"))
+            range_rows = []
+
+            for item in ranges[:100]:
+                if not isinstance(item, dict):
+                    continue
+                range_rows.append(
+                    {
+                        "ip": item.get("ip"),
+                        "port": item.get("port"),
+                        "protocol": item.get("protocol"),
+                        "transport_protocol": item.get("transport_protocol"),
+                        "start_time": item.get("start_time"),
+                        "end_time": item.get("end_time"),
+                        "vulns": ", ".join(_truncate_list(_normalize_display_list(item.get("vulns"), ("id", "name", "cve_id")), 3)) or "N/A",
+                        "threats": ", ".join(_truncate_list(_normalize_display_list(item.get("threats"), ("name", "value", "id")), 3)) or "N/A",
+                    }
+                )
+
+            next_page_token = d.get("next_page_token")
+            results.append(
+                {
+                    "host_id": d.get("host_id"),
+                    "range_count": len(ranges),
+                    "displayed_count": len(range_rows),
+                    "ranges_truncated": len(ranges) > len(range_rows),
+                    "next_page_token": next_page_token,
+                    "next_page_token_present": bool(next_page_token),
+                    "request": {
+                        "start_time": request.get("start_time"),
+                        "end_time": request.get("end_time"),
+                        "page_size": request.get("page_size"),
+                        "page_token": request.get("page_token"),
+                        "port": request.get("port"),
+                        "protocol": request.get("protocol"),
+                        "transport_protocol": request.get("transport_protocol"),
+                        "order_by": request.get("order_by"),
+                    },
+                    "range_rows": range_rows,
+                }
+            )
+        except Exception:
+            continue
+
+    return "views/host_service_history.html"
+
+
+def display_related_infrastructure(provides, all_app_runs, context):
+    _ = provides
+    context["results"] = results = []
+
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
+        try:
+            job = _as_dict(d.get("job"))
+            job_results = _as_dict(d.get("job_results"))
+            rows, rows_truncated = _extract_censeye_result_rows(job_results)
+            results.append(
+                {
+                    "result_count": _safe_int(job.get("result_count")),
+                    "returned_results": len(_ensure_list(job_results.get("results"))),
+                    "displayed_results": len(rows),
+                    "results_truncated": rows_truncated,
+                    "result_rows": rows,
+                }
+            )
+        except Exception:
+            continue
+
+    return "views/related_infrastructure.html"
