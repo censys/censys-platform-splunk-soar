@@ -260,6 +260,22 @@
                     "data_type": "boolean"
                 },
                 {
+                    "data_path": "action_result.data.*.third_party.mallory.*.observable.name",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.third_party.mallory.*.observable.uuid",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.third_party.mallory.*.opinions.*.source",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.third_party.mallory.*.opinions.*.verdict",
+                    "data_type": "string"
+                },
+                {
                     "data_path": "action_result.summary.ip",
                     "data_type": "string",
                     "contains": [

@@ -48,6 +48,12 @@
     text-align: left;
     white-space: nowrap;
   }
+  .censys-multiline div {
+    margin-bottom: 4px;
+  }
+  .censys-multiline div:last-child {
+    margin-bottom: 0;
+  }
   </style>
   {% for result in results %}
     <h4>Host Enrichment Lookup</h4>
@@ -224,12 +230,6 @@
           Satellite: {{ result.network.satellite }}
         </td>
       </tr>
-      <tr>
-        <td>
-          <b>Third Party (Mallory)</b>
-        </td>
-        <td>{{ result.third_party_mallory|join:", " }}</td>
-      </tr>
     </table>
     {% if result.services %}
       <h4>Services</h4>
@@ -249,6 +249,35 @@
               <td>{{ service.protocol }}</td>
               <td>{{ service.transport_protocol }}</td>
               <td>{{ service.scan_time }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+    {% if result.third_party_records %}
+      <h4>Third Party Threat Intelligence</h4>
+      <table class="wf-table-horizontal datatable censys-table">
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Observable</th>
+            <th>Observable UUID</th>
+            <th>Opinion Sources</th>
+            <th>Verdicts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in result.third_party_records %}
+            <tr>
+              <td>{{ record.provider }}</td>
+              <td>{{ record.observable_name }}</td>
+              <td>{{ record.observable_uuid }}</td>
+              <td class="censys-multiline">
+                {% for opinion in record.opinions %}<div>{{ opinion.source }}</div>{% endfor %}
+              </td>
+              <td class="censys-multiline">
+                {% for opinion in record.opinions %}<div>{{ opinion.verdict }}</div>{% endfor %}
+              </td>
             </tr>
           {% endfor %}
         </tbody>
