@@ -600,10 +600,10 @@ class CensysplatformConnector(BaseConnector):
         except models.SDKBaseError as err:
             return action_result.set_status(
                 phantom.APP_ERROR,
-                f"Failed to retrieve host (status code: {err.status_code})",
+                f"Failed to retrieve host enrichment (status code: {err.status_code})",
             )
         except Exception as err:
-            return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve host: {err!s}")
+            return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve host enrichment: {err!s}")
 
         host_data = self._serialize(host)
         services = host_data.get("services", []) if isinstance(host_data, dict) else []
