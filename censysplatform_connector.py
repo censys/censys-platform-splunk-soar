@@ -33,6 +33,7 @@ from censysplatform_consts import (
     ACTION_ID_LIVE_RESCAN,
     ACTION_ID_LOOKUP_CERT,
     ACTION_ID_LOOKUP_HOST,
+    ACTION_ID_LOOKUP_HOST_ENRICHMENT,
     ACTION_ID_LOOKUP_WEB_PROPERTY,
     ACTION_ID_SEARCH,
     ACTION_ID_TEST_CONNECTIVITY,
@@ -575,6 +576,66 @@ class CensysplatformConnector(BaseConnector):
         message = f"Host '{ip}' retrieved successfully"
         if is_truncated_host:
             message = f"Host '{ip}' has many visible services and results are truncated"
+        return action_result.set_status(
+            phantom.APP_SUCCESS,
+            message,
+        )
+
+    def _handle_lookup_host_enrichment(self, param: dict[str, Any]) -> int:
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        ip = param.get("ip", "")
+
+        try:
+            ipaddress.ip_address(ip)
+        except ValueError:
+            return action_result.set_status(phantom.APP_ERROR, "Please provide a valid IPv4 or IPv6 value in 'ip'")
+
+        try:
+            with self._create_sdk() as sdk:
+                response = sdk.global_data.get_host_enrichment(
+                    host_ip=ip,
+                    organization_id=self._organization_id,
+                )
+                host = response.result.result.resource
+        except models.SDKBaseError as err:
+            return action_result.set_status(
+                phantom.APP_ERROR,
+                f"Failed to retrieve host (status code: {err.status_code})",
+            )
+        except Exception as err:
+            return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve host: {err!s}")
+
+        host_data = self._serialize(host)
+        services = host_data.get("services", []) if isinstance(host_data, dict) else []
+        ports = sorted({service.get("port") for service in services if isinstance(service, dict) and service.get("port") is not None})
+        scan_times = [service.get("scan_time") for service in services if isinstance(service, dict) and service.get("scan_time")]
+        latest_scan = max(scan_times) if scan_times else "N/A"
+        service_count = host_data.get("service_count") if isinstance(host_data, dict) else None
+        if service_count is None:
+            service_count = len(services)
+
+        reputation = host_data.get("reputation") if isinstance(host_data, dict) else None
+        reputation = reputation if isinstance(reputation, dict) else {}
+        greynoise = host_data.get("greynoise") if isinstance(host_data, dict) else None
+        greynoise = greynoise if isinstance(greynoise, dict) else {}
+
+        action_result.add_data(host_data if isinstance(host_data, dict) else {"host": host_data})
+        action_result.update_summary(
+            {
+                "ip": host_data.get("ip", ip) if isinstance(host_data, dict) else ip,
+                "service_count": service_count,
+                "ports": ports,
+                "scan_time": latest_scan,
+                "reputation_score": reputation.get("score"),
+                "reputation_level": reputation.get("score_level"),
+                "greynoise_classification": greynoise.get("classification"),
+            }
+        )
+        message = (
+            f"Host '{ip}' enrichment retrieved "
+            f"(reputation: {reputation.get('score_level') or 'N/A'}, "
+            f"greynoise: {greynoise.get('classification') or 'N/A'})"
+        )
         return action_result.set_status(
             phantom.APP_SUCCESS,
             message,
@@ -1334,6 +1395,7 @@ class CensysplatformConnector(BaseConnector):
         action_mapping = {
             ACTION_ID_TEST_CONNECTIVITY: self._handle_test_connectivity,
             ACTION_ID_LOOKUP_HOST: self._handle_lookup_host,
+            ACTION_ID_LOOKUP_HOST_ENRICHMENT: self._handle_lookup_host_enrichment,
             ACTION_ID_LOOKUP_CERT: self._handle_lookup_cert,
             ACTION_ID_LOOKUP_WEB_PROPERTY: self._handle_lookup_web_property,
             ACTION_ID_SEARCH: self._handle_search,

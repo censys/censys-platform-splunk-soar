@@ -163,6 +163,157 @@
             "versions": "EQ(*)"
         },
         {
+            "action": "lookup host enrichment",
+            "identifier": "lookup_host_enrichment",
+            "description": "Retrieve enrichment data for a single host by IPv4 or IPv6 address",
+            "type": "investigate",
+            "read_only": true,
+            "parameters": {
+                "ip": {
+                    "data_type": "string",
+                    "description": "IPv4 or IPv6 address for lookup",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "ip"
+                    ],
+                    "order": 0
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data.*.autonomous_system.asn",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.autonomous_system.name",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.greynoise.actor",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.greynoise.classification",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.greynoise.last_observed_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.reputation.score",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.data.*.reputation.score_level",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.data.*.privacy.*.anonymous",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.data.*.privacy.*.proxy",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.data.*.privacy.*.tor",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.data.*.privacy.*.vpn",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.data.*.privacy.*.relay",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.data.*.network.*.hosting",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.data.*.network.*.mobile",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.data.*.network.*.satellite",
+                    "data_type": "boolean"
+                },
+                {
+                    "data_path": "action_result.summary.ip",
+                    "data_type": "string",
+                    "contains": [
+                        "ip"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.service_count",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.ports",
+                    "data_type": "string",
+                    "contains": [
+                        "port"
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.scan_time",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.reputation_score",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.reputation_level",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.greynoise_classification",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "custom",
+                "view": "censysplatform_view.display_host_enrichment",
+                "title": "Host Enrichment Lookup Results"
+            },
+            "versions": "EQ(*)"
+        },
+        {
             "action": "lookup cert",
             "identifier": "lookup_cert",
             "description": "Retrieve a certificate by SHA256 fingerprint",
@@ -1104,7 +1255,7 @@
             },
             {
                 "module": "censys_platform",
-                "input_file": "wheels/py3/censys_platform-0.13.2-py3-none-any.whl"
+                "input_file": "wheels/py3/censys_platform-0.15.3-py3-none-any.whl"
             },
             {
                 "module": "h11",

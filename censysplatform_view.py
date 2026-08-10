@@ -213,6 +213,108 @@ def _build_host_result(host: dict[str, Any], services: list[dict[str, Any]] | No
         },
     }
 
+def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    services = _ensure_list(services if services is not None else host.get("services"))
+
+    service_rows = []
+    service_labels = []
+    service_threat_names = []
+    service_vulns = []
+    service_scan_times = []
+
+    for svc in services:
+        if not isinstance(svc, dict):
+            continue
+
+        service_rows.append(
+            {
+                "port": svc.get("port"),
+                "protocol": svc.get("protocol"),
+                "transport_protocol": svc.get("transport_protocol"),
+                "scan_time": svc.get("scan_time"),
+                "labels": _normalize_display_list(svc.get("labels"), ("value", "name", "label")),
+                "threat_names": _normalize_display_list(svc.get("threats"), ("name", "value", "id")),
+                "vulns": _normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")),
+            }
+        )
+
+        if svc.get("scan_time") is not None:
+            service_scan_times.append(str(svc.get("scan_time")))
+
+        service_labels.extend(_normalize_display_list(svc.get("labels"), ("value", "name", "label")))
+        service_threat_names.extend(_normalize_display_list(svc.get("threats"), ("name", "value", "id")))
+        service_vulns.extend(_normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")))
+
+    host_labels = _normalize_display_list(host.get("labels"), ("value", "name", "label"))
+    dns_names = _normalize_display_list(_safe_get(host, "dns.names", []), ("name", "value"))
+
+    forward_dns_names = []
+    for fdns in _ensure_list(_safe_get(host, "dns.forward_dns", [])):
+        if isinstance(fdns, dict):
+            forward_dns_names.extend(_normalize_display_list(fdns.get("names"), ("name", "value")))
+
+    reverse_dns_names = _normalize_display_list(_safe_get(host, "dns.reverse_dns.names", []), ("name", "value"))
+
+    location = host.get("location") if isinstance(host.get("location"), dict) else {}
+    coordinates = location.get("coordinates") if isinstance(location.get("coordinates"), dict) else {}
+
+    return {
+        "ip": host.get("ip"),
+        "service_count": host.get("service_count"),
+        "services": service_rows,
+        "service_scan_times": service_scan_times,
+        "host_labels": host_labels,
+        "service_labels": service_labels,
+        "service_threat_names": service_threat_names,
+        "service_vulns": service_vulns,
+        "dns_names": dns_names,
+        "forward_dns_names": forward_dns_names,
+        "reverse_dns_names": reverse_dns_names,
+        "whois_network_name": _safe_get(host, "whois.network.name"),
+        "whois_network_cidrs": _normalize_display_list(
+            _safe_get(host, "whois.network.cidrs", []),
+            ("cidr", "value", "name", "id"),
+        ),
+        "autonomous_system_name": _safe_get(host, "autonomous_system.name"),
+        "autonomous_system_asn": _safe_get(host, "autonomous_system.asn"),
+        "location": {
+            "city": location.get("city"),
+            "province": location.get("province"),
+            "postal_code": location.get("postal_code"),
+            "country": location.get("country"),
+            "country_code": location.get("country_code"),
+            "continent": location.get("continent"),
+            "latitude": coordinates.get("latitude"),
+            "longitude": coordinates.get("longitude"),
+        },
+        # --- enrichment-specific fields (not present on a plain host) ---
+        "greynoise": {
+            "actor": _safe_get(host, "greynoise.actor"),
+            "classification": _safe_get(host, "greynoise.classification"),
+            "last_observed_time": _safe_get(host, "greynoise.last_observed_time"),
+        },
+        "reputation": {
+            "score": _safe_get(host, "reputation.score"),
+            "score_level": _safe_get(host, "reputation.score_level"),
+            "model_version": _safe_get(host, "reputation.model_version"),
+        },
+        "privacy": _flags_from_list(
+            host.get("privacy"), ("anonymous", "proxy", "relay", "tor", "vpn")
+        ),
+        "network": _flags_from_list(
+            host.get("network"), ("hosting", "mobile", "satellite")
+        ),
+        "third_party_mallory": _normalize_display_list(
+            _safe_get(host, "third_party.mallory", []), ("name", "id", "value")
+        ),
+    }
+
+
+def _flags_from_list(items: Any, keys: tuple[str, ...]) -> dict[str, bool]:
+    """Collapse a list of classification dicts into host-level boolean flags."""
+    rows = [item for item in _ensure_list(items) if isinstance(item, dict)]
+    return {key: any(bool(row.get(key)) for row in rows) for key in keys}
+
 
 def _build_web_property_result(web_property: dict[str, Any]) -> dict[str, Any]:
     endpoints = []
@@ -422,6 +524,21 @@ def display_host(provides, all_app_runs, context):
 
     return "views/lookup_host.html"
 
+def display_host_enrichment(provides, all_app_runs, context):
+    _ = provides
+    context["results"] = results = []
+
+    for result in _iter_action_results(all_app_runs):
+        d = _first_data_dict(result)
+        if not isinstance(d, dict):
+            continue
+
+        try:
+            results.append(_build_host_enrichment_result(d))
+        except Exception:
+            continue
+
+    return "views/lookup_host_enrichment.html"
 
 def display_cert(provides, all_app_runs, context):
     _ = provides

@@ -22,6 +22,7 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 
 [test connectivity](#action-test-connectivity) - Validate the asset configuration for connectivity <br>
 [lookup host](#action-lookup-host) - Retrieve a host by IPv4 or IPv6 address <br>
+[lookup host enrichment](#action-lookup-host-enrichment) - Retrieve enrichment data for a single host by IPv4 or IPv6 address <br>
 [lookup cert](#action-lookup-cert) - Retrieve a certificate by SHA256 fingerprint <br>
 [lookup web property](#action-lookup-web-property) - Retrieve a web property by hostname and port <br>
 [get host event history](#action-get-host-event-history) - Retrieve event history for a host <br>
@@ -75,6 +76,52 @@ action_result.summary.ports | string | `port` | |
 action_result.summary.scan_time | string | | |
 action_result.message | string | | |
 action_result.parameter.at_time | string | | |
+summary.total_objects | numeric | | |
+summary.total_objects_successful | numeric | | |
+
+## action: 'lookup host enrichment'
+
+Retrieve enrichment data for a single host by IPv4 or IPv6 address
+
+Type: **investigate** <br>
+Read only: **True**
+
+#### Action Parameters
+
+PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
+--------- | -------- | ----------- | ---- | --------
+**ip** | required | IPv4 or IPv6 address for lookup | string | `ip` |
+
+#### Action Output
+
+DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
+--------- | ---- | -------- | --------------
+action_result.status | string | | |
+action_result.parameter.ip | string | `ip` | |
+action_result.data.\*.ip | string | `ip` | |
+action_result.data.\*.autonomous_system.asn | numeric | | |
+action_result.data.\*.autonomous_system.name | string | | |
+action_result.data.\*.greynoise.actor | string | | |
+action_result.data.\*.greynoise.classification | string | | |
+action_result.data.\*.greynoise.last_observed_time | string | | |
+action_result.data.\*.reputation.score | numeric | | |
+action_result.data.\*.reputation.score_level | string | | |
+action_result.data.\*.privacy.\*.anonymous | boolean | | |
+action_result.data.\*.privacy.\*.proxy | boolean | | |
+action_result.data.\*.privacy.\*.tor | boolean | | |
+action_result.data.\*.privacy.\*.vpn | boolean | | |
+action_result.data.\*.privacy.\*.relay | boolean | | |
+action_result.data.\*.network.\*.hosting | boolean | | |
+action_result.data.\*.network.\*.mobile | boolean | | |
+action_result.data.\*.network.\*.satellite | boolean | | |
+action_result.summary.ip | string | `ip` | |
+action_result.summary.service_count | numeric | | |
+action_result.summary.ports | string | `port` | |
+action_result.summary.scan_time | string | | |
+action_result.summary.reputation_score | numeric | | |
+action_result.summary.reputation_level | string | | |
+action_result.summary.greynoise_classification | string | | |
+action_result.message | string | | |
 summary.total_objects | numeric | | |
 summary.total_objects_successful | numeric | | |
 
