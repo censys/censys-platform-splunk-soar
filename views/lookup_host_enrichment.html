@@ -180,44 +180,41 @@
       </tr>
       <tr>
         <td>
-          <b>Service Vulnerabilities</b>
-        </td>
-        <td>{{ result.service_vulns|join:", " }}</td>
-      </tr>
-      <tr>
-        <td>
           <b>Service Scan Times</b>
         </td>
         <td>{{ result.service_scan_times|join:", " }}</td>
       </tr>
       <tr>
         <td>
-          <b>Reputation Score</b>
+          <b>Reputation</b>
         </td>
-        <td>{{ result.reputation.score }} ({{ result.reputation.score_level }})</td>
+        <td>{{ result.reputation.display }}</td>
       </tr>
       <tr>
         <td>
           <b>GreyNoise Classification</b>
         </td>
-        <td>{{ result.greynoise.classification }}{% if result.greynoise.actor %} &mdash; {{ result.greynoise.actor }}{% endif %}</td>
+        <td>
+          {{ result.greynoise.classification|default_if_none:"Not reported" }}
+          {% if result.greynoise.actor %}&mdash; {{ result.greynoise.actor }}{% endif %}
+        </td>
       </tr>
       <tr>
         <td>
           <b>GreyNoise Last Observed</b>
         </td>
-        <td>{{ result.greynoise.last_observed_time }}</td>
+        <td>{{ result.greynoise.last_observed_time|default_if_none:"Not reported" }}</td>
       </tr>
       <tr>
         <td>
           <b>Privacy</b>
         </td>
         <td>
-          Anonymous: {{ result.privacy.anonymous }},
-          Proxy: {{ result.privacy.proxy }},
-          Relay: {{ result.privacy.relay }},
-          Tor: {{ result.privacy.tor }},
-          VPN: {{ result.privacy.vpn }}
+          Anonymous: {{ result.privacy.anonymous|default_if_none:"Unknown" }},
+          Proxy: {{ result.privacy.proxy|default_if_none:"Unknown" }},
+          Relay: {{ result.privacy.relay|default_if_none:"Unknown" }},
+          Tor: {{ result.privacy.tor|default_if_none:"Unknown" }},
+          VPN: {{ result.privacy.vpn|default_if_none:"Unknown" }}
         </td>
       </tr>
       <tr>
@@ -225,9 +222,9 @@
           <b>Network</b>
         </td>
         <td>
-          Hosting: {{ result.network.hosting }},
-          Mobile: {{ result.network.mobile }},
-          Satellite: {{ result.network.satellite }}
+          Hosting: {{ result.network.hosting|default_if_none:"Unknown" }},
+          Mobile: {{ result.network.mobile|default_if_none:"Unknown" }},
+          Satellite: {{ result.network.satellite|default_if_none:"Unknown" }}
         </td>
       </tr>
     </table>
@@ -238,8 +235,9 @@
           <tr>
             <th>Port</th>
             <th>Protocol</th>
-            <th>Transport</th>
             <th>Scan Time</th>
+            <th>Labels</th>
+            <th>Threats</th>
           </tr>
         </thead>
         <tbody>
@@ -247,8 +245,9 @@
             <tr>
               <td>{{ service.port }}</td>
               <td>{{ service.protocol }}</td>
-              <td>{{ service.transport_protocol }}</td>
               <td>{{ service.scan_time }}</td>
+              <td>{{ service.labels|join:", " }}</td>
+              <td>{{ service.threat_names|join:", " }}</td>
             </tr>
           {% endfor %}
         </tbody>

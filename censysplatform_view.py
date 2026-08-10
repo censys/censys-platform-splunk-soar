@@ -76,10 +76,44 @@ def _normalize_display_list(values: Any, preferred_keys: tuple[str, ...] = ()) -
     return normalized
 
 
-def _flags_from_list(items: Any, keys: tuple[str, ...]) -> dict[str, bool]:
-    """Collapse a list of classification dicts into host-level boolean flags."""
+def _flags_from_list(items: Any, keys: tuple[str, ...]) -> dict[str, bool | None]:
+    """Collapse a list of classification dicts into host-level boolean flags.
+
+    A key absent from every row means the source never made a claim either way, and is
+    reported as None so the widget can distinguish "not asserted" from an asserted False.
+    """
     rows = [item for item in _ensure_list(items) if isinstance(item, dict)]
-    return {key: any(bool(row.get(key)) for row in rows) for key in keys}
+    flags: dict[str, bool | None] = {}
+    for key in keys:
+        asserted = [row.get(key) for row in rows if row.get(key) is not None]
+        flags[key] = any(bool(value) for value in asserted) if asserted else None
+    return flags
+
+
+def _reputation_display(host: dict[str, Any]) -> str:
+    """Render reputation as one cell. A score of 0 is meaningful, so test for None explicitly."""
+    score_level = _safe_get(host, "reputation.score_level")
+    score = _safe_get(host, "reputation.score")
+
+    parts = [str(score_level)] if score_level else []
+    if score is not None:
+        parts.append(f"score {score}")
+    return " — ".join(parts) if parts else "Unknown"
+
+
+def _forward_dns_names(host: dict[str, Any]) -> list[str]:
+    """Collect names from dns.forward_dns, which is a map keyed by hostname."""
+    forward_dns = _safe_get(host, "dns.forward_dns")
+    if not isinstance(forward_dns, dict):
+        return []
+
+    names = []
+    for key, resolution in forward_dns.items():
+        name = resolution.get("name") if isinstance(resolution, dict) else None
+        display_name = _to_display_string(name if name is not None else key)
+        if display_name is not None:
+            names.append(display_name)
+    return names
 
 
 def _iter_action_results(all_app_runs: Any):
@@ -178,10 +212,7 @@ def _build_host_result(host: dict[str, Any], services: list[dict[str, Any]] | No
     host_labels = _normalize_display_list(host.get("labels"), ("value", "name", "label"))
     dns_names = _normalize_display_list(_safe_get(host, "dns.names", []), ("name", "value"))
 
-    forward_dns_names = []
-    for fdns in _ensure_list(_safe_get(host, "dns.forward_dns", [])):
-        if isinstance(fdns, dict):
-            forward_dns_names.extend(_normalize_display_list(fdns.get("names"), ("name", "value")))
+    forward_dns_names = _forward_dns_names(host)
 
     reverse_dns_names = _normalize_display_list(_safe_get(host, "dns.reverse_dns.names", []), ("name", "value"))
 
@@ -226,7 +257,6 @@ def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str,
     service_rows = []
     service_labels = []
     service_threat_names = []
-    service_vulns = []
     service_scan_times = []
 
     for svc in services:
@@ -237,11 +267,9 @@ def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str,
             {
                 "port": svc.get("port"),
                 "protocol": svc.get("protocol"),
-                "transport_protocol": svc.get("transport_protocol"),
                 "scan_time": svc.get("scan_time"),
                 "labels": _normalize_display_list(svc.get("labels"), ("value", "name", "label")),
                 "threat_names": _normalize_display_list(svc.get("threats"), ("name", "value", "id")),
-                "vulns": _normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")),
             }
         )
 
@@ -250,15 +278,11 @@ def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str,
 
         service_labels.extend(_normalize_display_list(svc.get("labels"), ("value", "name", "label")))
         service_threat_names.extend(_normalize_display_list(svc.get("threats"), ("name", "value", "id")))
-        service_vulns.extend(_normalize_display_list(svc.get("vulns"), ("id", "name", "cve_id")))
 
     host_labels = _normalize_display_list(host.get("labels"), ("value", "name", "label"))
     dns_names = _normalize_display_list(_safe_get(host, "dns.names", []), ("name", "value"))
 
-    forward_dns_names = []
-    for fdns in _ensure_list(_safe_get(host, "dns.forward_dns", [])):
-        if isinstance(fdns, dict):
-            forward_dns_names.extend(_normalize_display_list(fdns.get("names"), ("name", "value")))
+    forward_dns_names = _forward_dns_names(host)
 
     reverse_dns_names = _normalize_display_list(_safe_get(host, "dns.reverse_dns.names", []), ("name", "value"))
 
@@ -273,7 +297,6 @@ def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str,
         "host_labels": host_labels,
         "service_labels": service_labels,
         "service_threat_names": service_threat_names,
-        "service_vulns": service_vulns,
         "dns_names": dns_names,
         "forward_dns_names": forward_dns_names,
         "reverse_dns_names": reverse_dns_names,
@@ -304,6 +327,7 @@ def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str,
             "score": _safe_get(host, "reputation.score"),
             "score_level": _safe_get(host, "reputation.score_level"),
             "model_version": _safe_get(host, "reputation.model_version"),
+            "display": _reputation_display(host),
         },
         "privacy": _flags_from_list(host.get("privacy"), ("anonymous", "proxy", "relay", "tor", "vpn")),
         "network": _flags_from_list(host.get("network"), ("hosting", "mobile", "satellite")),
