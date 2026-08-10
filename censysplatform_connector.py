@@ -553,7 +553,7 @@ class CensysplatformConnector(BaseConnector):
         services_raw = getattr(host, "services", []) or []
         is_truncated_host = any(getattr(service, "representative_info", None) is not None for service in services_raw)
         host_data = self._serialize(host)
-        services = host_data.get("services", []) if isinstance(host_data, dict) else []
+        services = (host_data.get("services") or []) if isinstance(host_data, dict) else []
         ports = sorted({service.get("port") for service in services if isinstance(service, dict) and service.get("port") is not None})
         scan_times = [service.get("scan_time") for service in services if isinstance(service, dict) and service.get("scan_time")]
         latest_scan = max(scan_times) if scan_times else "N/A"
@@ -606,7 +606,7 @@ class CensysplatformConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, f"Failed to retrieve host enrichment: {err!s}")
 
         host_data = self._serialize(host)
-        services = host_data.get("services", []) if isinstance(host_data, dict) else []
+        services = (host_data.get("services") or []) if isinstance(host_data, dict) else []
         ports = sorted({service.get("port") for service in services if isinstance(service, dict) and service.get("port") is not None})
         scan_times = [service.get("scan_time") for service in services if isinstance(service, dict) and service.get("scan_time")]
         latest_scan = max(scan_times) if scan_times else "N/A"
@@ -619,22 +619,24 @@ class CensysplatformConnector(BaseConnector):
         greynoise = host_data.get("greynoise") if isinstance(host_data, dict) else None
         greynoise = greynoise if isinstance(greynoise, dict) else {}
 
+        summary = {
+            "ip": host_data.get("ip", ip) if isinstance(host_data, dict) else ip,
+            "service_count": service_count,
+            "ports": ports,
+            "scan_time": latest_scan,
+            "reputation_level": reputation.get("score_level") or "N/A",
+            "greynoise_classification": greynoise.get("classification") or "N/A",
+        }
+        if reputation.get("score") is not None:
+            summary["reputation_score"] = reputation.get("score")
+
         action_result.add_data(host_data if isinstance(host_data, dict) else {"host": host_data})
-        action_result.update_summary(
-            {
-                "ip": host_data.get("ip", ip) if isinstance(host_data, dict) else ip,
-                "service_count": service_count,
-                "ports": ports,
-                "scan_time": latest_scan,
-                "reputation_score": reputation.get("score"),
-                "reputation_level": reputation.get("score_level"),
-                "greynoise_classification": greynoise.get("classification"),
-            }
-        )
+        action_result.update_summary(summary)
         message = (
             f"Host '{ip}' enrichment retrieved "
             f"(reputation: {reputation.get('score_level') or 'N/A'}, "
-            f"greynoise: {greynoise.get('classification') or 'N/A'})"
+            f"greynoise: {greynoise.get('classification') or 'N/A'}, "
+            f"{service_count} services)"
         )
         return action_result.set_status(
             phantom.APP_SUCCESS,
