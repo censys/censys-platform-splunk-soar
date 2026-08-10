@@ -114,6 +114,10 @@ action_result.data.\*.privacy.\*.relay | boolean | | |
 action_result.data.\*.network.\*.hosting | boolean | | |
 action_result.data.\*.network.\*.mobile | boolean | | |
 action_result.data.\*.network.\*.satellite | boolean | | |
+action_result.data.\*.third_party.mallory.\*.observable.name | string | | |
+action_result.data.\*.third_party.mallory.\*.observable.uuid | string | | |
+action_result.data.\*.third_party.mallory.\*.opinions.\*.source | string | | |
+action_result.data.\*.third_party.mallory.\*.opinions.\*.verdict | string | | |
 action_result.summary.ip | string | `ip` | |
 action_result.summary.service_count | numeric | | |
 action_result.summary.ports | string | `port` | |

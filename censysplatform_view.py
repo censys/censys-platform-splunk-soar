@@ -76,6 +76,12 @@ def _normalize_display_list(values: Any, preferred_keys: tuple[str, ...] = ()) -
     return normalized
 
 
+def _flags_from_list(items: Any, keys: tuple[str, ...]) -> dict[str, bool]:
+    """Collapse a list of classification dicts into host-level boolean flags."""
+    rows = [item for item in _ensure_list(items) if isinstance(item, dict)]
+    return {key: any(bool(row.get(key)) for row in rows) for key in keys}
+
+
 def _iter_action_results(all_app_runs: Any):
     """Yield action result objects from SOAR all_app_runs safely."""
     if all_app_runs is None:
@@ -213,6 +219,7 @@ def _build_host_result(host: dict[str, Any], services: list[dict[str, Any]] | No
         },
     }
 
+
 def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     services = _ensure_list(services if services is not None else host.get("services"))
 
@@ -298,22 +305,44 @@ def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str,
             "score_level": _safe_get(host, "reputation.score_level"),
             "model_version": _safe_get(host, "reputation.model_version"),
         },
-        "privacy": _flags_from_list(
-            host.get("privacy"), ("anonymous", "proxy", "relay", "tor", "vpn")
-        ),
-        "network": _flags_from_list(
-            host.get("network"), ("hosting", "mobile", "satellite")
-        ),
-        "third_party_mallory": _normalize_display_list(
-            _safe_get(host, "third_party.mallory", []), ("name", "id", "value")
-        ),
+        "privacy": _flags_from_list(host.get("privacy"), ("anonymous", "proxy", "relay", "tor", "vpn")),
+        "network": _flags_from_list(host.get("network"), ("hosting", "mobile", "satellite")),
+        "third_party_records": _build_third_party_rows(host),
     }
 
 
-def _flags_from_list(items: Any, keys: tuple[str, ...]) -> dict[str, bool]:
-    """Collapse a list of classification dicts into host-level boolean flags."""
-    rows = [item for item in _ensure_list(items) if isinstance(item, dict)]
-    return {key: any(bool(row.get(key)) for row in rows) for key in keys}
+def _build_third_party_rows(host: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten third-party threat intel records into provider/observable/opinion rows.
+
+    The providers under `third_party` (mallory, ...) are an open set and each may carry
+    its own fields, so every provider is walked generically and only the shared fields
+    the widget targets are surfaced. Providers missing them render blank rather than
+    breaking the widget.
+    """
+    third_party = host.get("third_party")
+    if not isinstance(third_party, dict):
+        return []
+
+    rows = []
+    for provider, records in sorted(third_party.items()):
+        for record in _ensure_list([records] if isinstance(records, dict) else records):
+            if not isinstance(record, dict):
+                continue
+
+            observable = record.get("observable") if isinstance(record.get("observable"), dict) else {}
+            rows.append(
+                {
+                    "provider": provider,
+                    "observable_name": observable.get("name"),
+                    "observable_uuid": observable.get("uuid"),
+                    "opinions": [
+                        {"source": opinion.get("source"), "verdict": opinion.get("verdict")}
+                        for opinion in _ensure_list(record.get("opinions"))
+                        if isinstance(opinion, dict)
+                    ],
+                }
+            )
+    return rows
 
 
 def _build_web_property_result(web_property: dict[str, Any]) -> dict[str, Any]:
@@ -524,6 +553,7 @@ def display_host(provides, all_app_runs, context):
 
     return "views/lookup_host.html"
 
+
 def display_host_enrichment(provides, all_app_runs, context):
     _ = provides
     context["results"] = results = []
@@ -539,6 +569,7 @@ def display_host_enrichment(provides, all_app_runs, context):
             continue
 
     return "views/lookup_host_enrichment.html"
+
 
 def display_cert(provides, all_app_runs, context):
     _ = provides
