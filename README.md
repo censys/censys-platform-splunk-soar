@@ -70,10 +70,57 @@ DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
 action_result.status | string | | |
 action_result.parameter.ip | string | `ip` | |
 action_result.data.\*.ip | string | `ip` | |
+action_result.data.\*.service_count | numeric | | |
+action_result.data.\*.is_truncated_host | boolean | | |
+action_result.data.\*.autonomous_system.asn | numeric | | |
+action_result.data.\*.autonomous_system.name | string | | |
+action_result.data.\*.greynoise.actor | string | | |
+action_result.data.\*.greynoise.classification | string | | |
+action_result.data.\*.greynoise.last_observed_time | string | | |
+action_result.data.\*.dns.names | string | `domain` | |
+action_result.data.\*.dns.reverse_dns.names | string | `domain` | |
+action_result.data.\*.whois.network.name | string | | |
+action_result.data.\*.whois.network.cidrs | string | | |
+action_result.data.\*.location.city | string | | |
+action_result.data.\*.location.province | string | | |
+action_result.data.\*.location.postal_code | string | | |
+action_result.data.\*.location.country | string | | |
+action_result.data.\*.location.country_code | string | | |
+action_result.data.\*.location.continent | string | | |
+action_result.data.\*.location.coordinates.latitude | numeric | | |
+action_result.data.\*.location.coordinates.longitude | numeric | | |
+action_result.data.\*.labels.\*.value | string | | |
+action_result.data.\*.reputation.score | numeric | | |
+action_result.data.\*.reputation.score_level | string | | |
+action_result.data.\*.reputation.label | string | | |
+action_result.data.\*.reputation.model_version | string | | |
+action_result.data.\*.reputation.score_suppressed | boolean | | |
+action_result.data.\*.reputation.class_probabilities.\*.label | string | | |
+action_result.data.\*.reputation.class_probabilities.\*.probability | numeric | | |
+action_result.data.\*.reputation.evidence.\*.category | string | | |
+action_result.data.\*.reputation.evidence.\*.evidence_score | numeric | | |
+action_result.data.\*.reputation.evidence.\*.feature.id | string | | |
+action_result.data.\*.reputation.evidence.\*.feature.name | string | | |
+action_result.data.\*.reputation.evidence.\*.feature.value | string | | |
+action_result.data.\*.reputation.evidence.\*.feature.contribution | numeric | | |
+action_result.data.\*.reputation.evidence.\*.feature.category | string | | |
+action_result.data.\*.services.\*.port | numeric | `port` | |
+action_result.data.\*.services.\*.protocol | string | | |
+action_result.data.\*.services.\*.transport_protocol | string | | |
+action_result.data.\*.services.\*.scan_time | string | | |
+action_result.data.\*.services.\*.banner | string | | |
+action_result.data.\*.services.\*.labels.\*.value | string | | |
+action_result.data.\*.services.\*.threats.\*.name | string | | |
+action_result.data.\*.services.\*.vulns.\*.id | string | | |
+action_result.data.\*.services.\*.vulns.\*.severity | string | | |
+action_result.data.\*.services.\*.cert.fingerprint_sha256 | string | `sha256` | |
 action_result.summary.ip | string | `ip` | |
 action_result.summary.service_count | numeric | | |
 action_result.summary.ports | string | `port` | |
 action_result.summary.scan_time | string | | |
+action_result.summary.reputation_score | numeric | | |
+action_result.summary.reputation_level | string | | |
+action_result.summary.greynoise_classification | string | | |
 action_result.message | string | | |
 action_result.parameter.at_time | string | | |
 summary.total_objects | numeric | | |
@@ -106,6 +153,16 @@ action_result.data.\*.greynoise.classification | string | | |
 action_result.data.\*.greynoise.last_observed_time | string | | |
 action_result.data.\*.reputation.score | numeric | | |
 action_result.data.\*.reputation.score_level | string | | |
+action_result.data.\*.reputation.label | string | | |
+action_result.data.\*.reputation.model_version | string | | |
+action_result.data.\*.reputation.score_suppressed | boolean | | |
+action_result.data.\*.reputation.class_probabilities.\*.label | string | | |
+action_result.data.\*.reputation.class_probabilities.\*.probability | numeric | | |
+action_result.data.\*.reputation.evidence.\*.feature.id | string | | |
+action_result.data.\*.reputation.evidence.\*.feature.name | string | | |
+action_result.data.\*.reputation.evidence.\*.feature.value | string | | |
+action_result.data.\*.reputation.evidence.\*.feature.contribution | numeric | | |
+action_result.data.\*.reputation.evidence.\*.feature.category | string | | |
 action_result.data.\*.privacy.\*.anonymous | boolean | | |
 action_result.data.\*.privacy.\*.proxy | boolean | | |
 action_result.data.\*.privacy.\*.tor | boolean | | |

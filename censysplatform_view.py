@@ -90,15 +90,87 @@ def _flags_from_list(items: Any, keys: tuple[str, ...]) -> dict[str, bool | None
     return flags
 
 
-def _reputation_display(host: dict[str, Any]) -> str:
-    """Render reputation as one cell. A score of 0 is meaningful, so test for None explicitly."""
-    score_level = _safe_get(host, "reputation.score_level")
-    score = _safe_get(host, "reputation.score")
+def _reputation_level(host: dict[str, Any]) -> Any:
+    """Reputation verdict, which responses carry as either `score_level` or `label`."""
+    return _safe_get(host, "reputation.score_level") or _safe_get(host, "reputation.label")
 
-    parts = [str(score_level)] if score_level else []
-    if score is not None:
-        parts.append(f"score {score}")
-    return " — ".join(parts) if parts else "Unknown"
+
+def _score_display(value: Any) -> Any:
+    """Scale the 0-1 reputation score to a whole number for display, truncating the remainder.
+
+    The raw decimal stays in `action_result.data`; only the widget cell is scaled, so 0.647
+    reads as 64. Anything non-numeric passes through untouched.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return value
+    return int(value * 100)
+
+
+def _reputation_label_display(host: dict[str, Any]) -> str:
+    """Render the reputation verdict on its own, separate from the score."""
+    score_level = _reputation_level(host)
+    return str(score_level) if score_level else "Unknown"
+
+
+def _reputation_score_display(host: dict[str, Any]) -> str:
+    """Render the reputation score on its own. A score of 0 is meaningful, so test for None."""
+    score = _safe_get(host, "reputation.score")
+    if score is None:
+        return "Not reported"
+    # A suppressed score is still reported, so say so rather than presenting it as a verdict.
+    suffix = " (suppressed)" if _safe_get(host, "reputation.score_suppressed") else ""
+    return f"{_score_display(score)}{suffix}"
+
+
+def _build_reputation(host: dict[str, Any]) -> dict[str, Any]:
+    """Reputation fields for the widget: raw values for playbooks, display strings for cells."""
+    return {
+        "score": _safe_get(host, "reputation.score"),
+        "score_level": _reputation_level(host),
+        "model_version": _safe_get(host, "reputation.model_version"),
+        "score_suppressed": _safe_get(host, "reputation.score_suppressed"),
+        "label_display": _reputation_label_display(host),
+        "score_display": _reputation_score_display(host),
+    }
+
+
+def _round_display(value: Any, places: int = 2) -> Any:
+    """Shorten a float for display, leaving anything non-numeric untouched."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return value
+    return round(value, places)
+
+
+def _reputation_evidence_rows(host: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten reputation evidence into rows, preserving the API's contribution ordering.
+
+    An entry scores one model feature under `feature`, and may also carry the aggregate
+    `category`/`evidence_score` pair alongside it. Whichever the response populates
+    collapses into a single row, feature values taking precedence.
+
+    An entry's `threats`, `external_signals`, and `additional_fields` are not rendered; they
+    remain in `action_result.data` for playbooks.
+    """
+    rows = []
+    for entry in _ensure_list(_safe_get(host, "reputation.evidence")):
+        if not isinstance(entry, dict):
+            continue
+
+        feature = entry.get("feature") if isinstance(entry.get("feature"), dict) else {}
+        contribution = feature.get("contribution")
+        if contribution is None:
+            contribution = entry.get("evidence_score")
+
+        row = {
+            "name": feature.get("name") or feature.get("id"),
+            "value": _to_display_string(feature.get("value")),
+            "contribution": _round_display(contribution),
+            "category": feature.get("category") or entry.get("category"),
+        }
+        if all(field is None for field in row.values()):
+            continue
+        rows.append(row)
+    return rows
 
 
 def _forward_dns_names(host: dict[str, Any]) -> list[str]:
@@ -228,6 +300,7 @@ def _build_host_result(host: dict[str, Any], services: list[dict[str, Any]] | No
         "service_labels": service_labels,
         "service_threat_names": service_threat_names,
         "service_vulns": service_vulns,
+        "reputation": _build_reputation(host),
         "dns_names": dns_names,
         "forward_dns_names": forward_dns_names,
         "reverse_dns_names": reverse_dns_names,
@@ -324,10 +397,8 @@ def _build_host_enrichment_result(host: dict[str, Any], services: list[dict[str,
             "last_observed_time": _safe_get(host, "greynoise.last_observed_time"),
         },
         "reputation": {
-            "score": _safe_get(host, "reputation.score"),
-            "score_level": _safe_get(host, "reputation.score_level"),
-            "model_version": _safe_get(host, "reputation.model_version"),
-            "display": _reputation_display(host),
+            **_build_reputation(host),
+            "evidence": _reputation_evidence_rows(host),
         },
         "privacy": _flags_from_list(host.get("privacy"), ("anonymous", "proxy", "relay", "tor", "vpn")),
         "network": _flags_from_list(host.get("network"), ("hosting", "mobile", "satellite")),

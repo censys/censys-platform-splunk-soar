@@ -184,6 +184,18 @@
         </td>
         <td>{{ result.service_scan_times|join:", " }}</td>
       </tr>
+      <tr>
+        <td>
+          <b>Reputation Label</b>
+        </td>
+        <td>{{ result.reputation.label_display }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Reputation Score</b>
+        </td>
+        <td>{{ result.reputation.score_display }}</td>
+      </tr>
     </table>
     {% if result.services %}
       <h4>Services</h4>

@@ -1,1 +1,1 @@
-censys-platform==0.15.3
+censys-platform==0.16.1

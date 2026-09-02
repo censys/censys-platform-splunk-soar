@@ -186,9 +186,21 @@
       </tr>
       <tr>
         <td>
-          <b>Reputation</b>
+          <b>Reputation Label</b>
         </td>
-        <td>{{ result.reputation.display }}</td>
+        <td>{{ result.reputation.label_display }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Reputation Score</b>
+        </td>
+        <td>{{ result.reputation.score_display }}</td>
+      </tr>
+      <tr>
+        <td>
+          <b>Reputation Model Version</b>
+        </td>
+        <td>{{ result.reputation.model_version|default_if_none:"Not reported" }}</td>
       </tr>
       <tr>
         <td>
@@ -228,6 +240,29 @@
         </td>
       </tr>
     </table>
+    {% if result.reputation.evidence %}
+      <h4>Reputation Evidence</h4>
+      <table class="wf-table-horizontal datatable censys-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Value</th>
+            <th>Contribution</th>
+            <th>Category</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for evidence in result.reputation.evidence %}
+            <tr>
+              <td>{{ evidence.name|default_if_none:"" }}</td>
+              <td>{{ evidence.value|default_if_none:"" }}</td>
+              <td>{{ evidence.contribution|default_if_none:"" }}</td>
+              <td>{{ evidence.category|default_if_none:"" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
     {% if result.services %}
       <h4>Services</h4>
       <table class="wf-table-horizontal datatable censys-table">
