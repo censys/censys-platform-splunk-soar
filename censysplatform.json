@@ -1507,7 +1507,7 @@
             },
             {
                 "module": "anyio",
-                "input_file": "wheels/py3/anyio-4.14.2-py3-none-any.whl"
+                "input_file": "wheels/py3/anyio-4.15.0-py3-none-any.whl"
             },
             {
                 "module": "censys_platform",
