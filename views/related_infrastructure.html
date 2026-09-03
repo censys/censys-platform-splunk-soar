@@ -1,4 +1,15 @@
-<!--
+{% extends 'widgets/widget_template.html' %}
+{% load custom_template %}
+{% block custom_title_prop %}
+  {% if title_logo %}
+    style="background-size: auto 60%; background-position: 50%; background-repeat: no-repeat; background-image: url('/app_resource/{{ title_logo }}');"
+  {% endif %}
+{% endblock %}
+{% block title1 %}{{ title1 }}{% endblock %}
+{% block title2 %}{{ title2 }}{% endblock %}
+{% block custom_tools %}{% endblock %}
+{% block widget_content %}
+  <!--
  Copyright (c) 2026 Splunk Inc.
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,17 +24,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-{% extends 'widgets/widget_template.html' %}
-{% load custom_template %}
-{% block custom_title_prop %}
-  {% if title_logo %}
-    style="background-size: auto 60%; background-position: 50%; background-repeat: no-repeat; background-image: url('/app_resource/{{ title_logo }}');"
-  {% endif %}
-{% endblock %}
-{% block title1 %}{{ title1 }}{% endblock %}
-{% block title2 %}{{ title2 }}{% endblock %}
-{% block custom_tools %}{% endblock %}
-{% block widget_content %}
   <style>
   .censys-table {
     width: 100%;
